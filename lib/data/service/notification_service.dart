@@ -13,25 +13,27 @@ class NotificationService {
   Timer? _timer;
 
   Future<void> init() async {
-    await localNotifier.setup(
-      appName: 'SubscriptionManager',
-      shortcutPolicy: ShortcutPolicy.requireCreate,
-    );
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      await localNotifier.setup(
+        appName: 'SubscriptionManager',
+        shortcutPolicy: ShortcutPolicy.requireCreate,
+      );
 
-    PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    
-    launchAtStartup.setup(
-      appName: packageInfo.appName,
-      appPath: Platform.resolvedExecutable,
-      packageName: packageInfo.packageName,
-    );
-    await launchAtStartup.enable();
+      PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      
+      launchAtStartup.setup(
+        appName: packageInfo.appName,
+        appPath: Platform.resolvedExecutable,
+        packageName: packageInfo.packageName,
+      );
+      await launchAtStartup.enable();
 
-    // Step 6: Startup notification
-    await _checkAndNotify(force: true);
+      // Step 6: Startup notification
+      await _checkAndNotify(force: true);
 
-    // Step 5: Background check
-    _startBackgroundTimer();
+      // Step 5: Background check
+      _startBackgroundTimer();
+    }
   }
 
   void _startBackgroundTimer() {
@@ -45,6 +47,8 @@ class NotificationService {
   }
 
   Future<void> _checkAndNotify({bool force = false}) async {
+    if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) return;
+
     final prefs = await SharedPreferences.getInstance();
     final lastCheck = prefs.getString('last_notification_date');
     final now = DateTime.now();
@@ -59,11 +63,12 @@ class NotificationService {
       final subscriptions = await _appwriteService.getSubscriptions();
       
       // Step 5 & 6: Check for expiring in 3 days.
-      final threeDaysLater = now.add(const Duration(days: 3));
+      final today = DateTime(now.year, now.month, now.day);
 
       List<SubscriptionItem> expiringItems = subscriptions.where((item) {
-        // Simple comparison
-        return item.nextDate.isAfter(now.subtract(const Duration(days: 1))) && item.nextDate.isBefore(threeDaysLater);
+        final itemDate = DateTime(item.nextDate.year, item.nextDate.month, item.nextDate.day);
+        final difference = itemDate.difference(today).inDays;
+        return difference >= 0 && difference <= 3;
       }).toList();
 
       if (expiringItems.isNotEmpty) {
