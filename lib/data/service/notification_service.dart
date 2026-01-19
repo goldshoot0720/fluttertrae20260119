@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_notifier/local_notifier.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -10,9 +12,11 @@ import '../model/subscription_item.dart';
 
 class NotificationService {
   final AppwriteService _appwriteService = AppwriteService();
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   Timer? _timer;
 
   Future<void> init() async {
+    // Desktop Setup
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       await localNotifier.setup(
         appName: 'SubscriptionManager',
@@ -27,13 +31,28 @@ class NotificationService {
         packageName: packageInfo.packageName,
       );
       await launchAtStartup.enable();
-
-      // Step 6: Startup notification
-      await _checkAndNotify(force: true);
-
-      // Step 5: Background check
-      _startBackgroundTimer();
+    } else if (Platform.isAndroid) {
+      // Android Setup
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      
+      const InitializationSettings initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+      );
+      
+      await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+      
+      // Request permission for Android 13+
+      await _flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
     }
+
+    // Common Logic (Startup check)
+    // Step 6: Startup notification
+    await _checkAndNotify(force: true);
+
+    // Step 5: Background check
+    _startBackgroundTimer();
   }
 
   void _startBackgroundTimer() {
@@ -47,8 +66,6 @@ class NotificationService {
   }
 
   Future<void> _checkAndNotify({bool force = false}) async {
-    if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) return;
-
     final prefs = await SharedPreferences.getInstance();
     final lastCheck = prefs.getString('last_notification_date');
     final now = DateTime.now();
@@ -73,7 +90,7 @@ class NotificationService {
 
       if (expiringItems.isNotEmpty) {
         for (var item in expiringItems) {
-           _showNotification(item);
+           await _showNotification(item);
         }
         await prefs.setString('last_notification_date', todayStr);
       }
@@ -82,21 +99,43 @@ class NotificationService {
     }
   }
 
-  void _showNotification(SubscriptionItem item) {
-    LocalNotification notification = LocalNotification(
-      identifier: item.id,
-      title: 'Subscription Expiring Soon',
-      body: '${item.name} expires on ${item.nextDate.toLocal().toString().split(' ')[0]}',
-      actions: [
-        LocalNotificationAction(
-          text: 'Open',
-        ),
-      ],
-    );
-    notification.onClick = () {
-      windowManager.show();
-      windowManager.focus();
-    };
-    notification.show();
+  Future<void> _showNotification(SubscriptionItem item) async {
+    final title = 'Subscription Expiring Soon';
+    final body = '${item.name} expires on ${item.nextDate.toLocal().toString().split(' ')[0]}';
+
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      LocalNotification notification = LocalNotification(
+        identifier: item.id,
+        title: title,
+        body: body,
+        actions: [
+          LocalNotificationAction(
+            text: 'Open',
+          ),
+        ],
+      );
+      notification.onClick = () {
+        windowManager.show();
+        windowManager.focus();
+      };
+      notification.show();
+    } else if (Platform.isAndroid) {
+      const AndroidNotificationDetails androidNotificationDetails =
+          AndroidNotificationDetails('subscription_channel', 'Subscription Notifications',
+              channelDescription: 'Notifications for expiring subscriptions',
+              importance: Importance.max,
+              priority: Priority.high,
+              ticker: 'ticker');
+      const NotificationDetails notificationDetails =
+          NotificationDetails(android: androidNotificationDetails);
+      
+      // Use hash of ID for notification ID (must be int)
+      await _flutterLocalNotificationsPlugin.show(
+        item.id.hashCode,
+        title,
+        body,
+        notificationDetails,
+      );
+    }
   }
 }
