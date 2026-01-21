@@ -10,6 +10,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'appwrite_service.dart';
 import '../model/subscription_item.dart';
 
+// Top-level function for background execution
+@pragma('vm:entry-point')
+Future<void> checkAndNotifyBackground() async {
+  final notificationService = NotificationService();
+  await notificationService._checkAndNotify(force: true); // Force check in background task
+}
+
 class NotificationService {
   final AppwriteService _appwriteService = AppwriteService();
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -56,7 +63,7 @@ class NotificationService {
   }
 
   void _startBackgroundTimer() {
-    // Check every hour
+    // Check every hour (Desktop only mainly, or foreground Android)
     _timer = Timer.periodic(const Duration(hours: 1), (timer) async {
        final now = DateTime.now();
        if (now.hour >= 6) {
@@ -71,9 +78,16 @@ class NotificationService {
     final now = DateTime.now();
     final todayStr = "${now.year}-${now.month}-${now.day}";
 
+    // If it's a background task (force=true), we still might want to respect the daily limit
+    // OR we might want to check if it's past 6AM.
+    // Let's assume background task runs periodically and we check time.
     if (!force && lastCheck == todayStr) {
-      // Already notified today
-      return;
+       return;
+    }
+    
+    // Logic for 6AM check
+    if (now.hour < 6 && !force) {
+        return; 
     }
 
     try {

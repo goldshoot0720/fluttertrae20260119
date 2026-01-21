@@ -1,8 +1,22 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:workmanager/workmanager.dart';
 import 'data/service/notification_service.dart';
 import 'ui/home_screen.dart';
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    print("Native called background task: $task");
+    try {
+      await checkAndNotifyBackground();
+    } catch (e) {
+      print("Error in background task: $e");
+    }
+    return Future.value(true);
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +35,21 @@ void main() async {
       await windowManager.show();
       await windowManager.focus();
     });
+  } else if (Platform.isAndroid) {
+    // Workmanager init for Android
+    Workmanager().initialize(
+      callbackDispatcher,
+      isInDebugMode: true // TODO: Set to false in production
+    );
+    // Register periodic task (every 1 hour)
+    Workmanager().registerPeriodicTask(
+      "1",
+      "simplePeriodicTask",
+      frequency: const Duration(hours: 1),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+      ),
+    );
   }
   
   // Init Notification Service
