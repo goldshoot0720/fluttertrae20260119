@@ -14,6 +14,14 @@ import '../model/subscription_item.dart';
 @pragma('vm:entry-point')
 Future<void> checkAndNotifyBackground() async {
   final notificationService = NotificationService();
+  if (Platform.isAndroid) {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+    await notificationService._flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
   await notificationService._checkAndNotify(force: true); // Force check in background task
 }
 
