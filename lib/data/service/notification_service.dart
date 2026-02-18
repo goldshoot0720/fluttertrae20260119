@@ -20,9 +20,11 @@ Future<void> checkAndNotifyBackground() async {
     const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
     );
-    await notificationService._flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await notificationService._flutterLocalNotificationsPlugin.initialize(
+      settings: initializationSettings,
+    );
   }
-  await notificationService._checkAndNotify(force: true); // Force check in background task
+  await notificationService._checkAndNotify(force: true);
 }
 
 class NotificationService {
@@ -55,7 +57,9 @@ class NotificationService {
         android: initializationSettingsAndroid,
       );
       
-      await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
+      await _flutterLocalNotificationsPlugin.initialize(
+        settings: initializationSettings,
+      );
       
       // Request permission for Android 13+
       await _flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
@@ -63,15 +67,13 @@ class NotificationService {
     }
 
     // Common Logic (Startup check)
-    // Step 6: Startup notification
     await _checkAndNotify(force: true);
 
-    // Step 5: Background check
+    // Background check
     _startBackgroundTimer();
   }
 
   void _startBackgroundTimer() {
-    // Check every hour (Desktop only mainly, or foreground Android)
     _timer = Timer.periodic(const Duration(hours: 1), (timer) async {
        final now = DateTime.now();
        if (now.hour >= 6) {
@@ -86,12 +88,10 @@ class NotificationService {
     final now = DateTime.now();
     final todayStr = "${now.year}-${now.month}-${now.day}";
 
-    // If it's a background task (force=true), we still might want to respect the daily limit
     if (!force && lastCheck == todayStr) {
        return;
     }
     
-    // Logic for 6AM check
     if (now.hour < 6 && !force) {
         return; 
     }
@@ -99,7 +99,6 @@ class NotificationService {
     try {
       final subscriptions = await _appwriteService.getSubscriptions();
       
-      // Check for subscriptions expiring within 3 days — per item, by date, regardless of account or renewal status
       final today = DateTime(now.year, now.month, now.day);
 
       List<SubscriptionItem> expiringItems = subscriptions.where((item) {
@@ -108,7 +107,6 @@ class NotificationService {
         return difference >= 0 && difference <= 3;
       }).toList();
 
-      // Sort by date (nearest first)
       expiringItems.sort((a, b) => a.nextDate.compareTo(b.nextDate));
 
       if (expiringItems.isNotEmpty) {
@@ -157,12 +155,11 @@ class NotificationService {
       NotificationDetails notificationDetails =
           NotificationDetails(android: androidNotificationDetails);
       
-      // Use hash of ID for notification ID (must be int)
       await _flutterLocalNotificationsPlugin.show(
-        item.id.hashCode,
-        title,
-        body,
-        notificationDetails,
+        id: item.id.hashCode,
+        title: title,
+        body: body,
+        notificationDetails: notificationDetails,
       );
     }
   }
