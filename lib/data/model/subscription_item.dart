@@ -22,16 +22,25 @@ class SubscriptionItem {
   });
 
   factory SubscriptionItem.fromJson(Map<String, dynamic> json) {
+    DateTime nextDate;
+    try {
+      nextDate = json['nextdate'] != null
+          ? DateTime.parse(json['nextdate'] as String)
+          : DateTime.now();
+    } catch (_) {
+      nextDate = DateTime.now();
+    }
+
     return SubscriptionItem(
-      id: json['\$id'] ?? '',
-      name: json['name'] ?? '',
-      site: json['site'] ?? '',
-      price: json['price'] ?? 0,
-      nextDate: DateTime.parse(json['nextdate']),
-      note: json['note'] ?? '',
-      account: json['account'] ?? '',
-      createdAt: json['\$createdAt'] != null ? DateTime.parse(json['\$createdAt']) : null,
-      updatedAt: json['\$updatedAt'] != null ? DateTime.parse(json['\$updatedAt']) : null,
+      id: (json['\$id'] as String?) ?? '',
+      name: (json['name'] as String?) ?? '',
+      site: (json['site'] as String?) ?? '',
+      price: (json['price'] as int?) ?? 0,
+      nextDate: nextDate,
+      note: (json['note'] as String?) ?? '',
+      account: (json['account'] as String?) ?? '',
+      createdAt: json['\$createdAt'] != null ? DateTime.tryParse(json['\$createdAt'] as String) : null,
+      updatedAt: json['\$updatedAt'] != null ? DateTime.tryParse(json['\$updatedAt'] as String) : null,
     );
   }
 
