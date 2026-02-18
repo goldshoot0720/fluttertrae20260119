@@ -47,6 +47,10 @@ dependencies:
   workmanager: ^0.9.0
   google_fonts: ^8.0.1
 
+dependency_overrides:
+  flutter_local_notifications_windows:
+    path: flutter_local_notifications_windows_stub
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
