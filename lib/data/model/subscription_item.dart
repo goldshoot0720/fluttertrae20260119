@@ -22,13 +22,15 @@ class SubscriptionItem {
   });
 
   factory SubscriptionItem.fromJson(Map<String, dynamic> json) {
+    // 無日期時使用遠未來日期，避免誤判為今天到期
+    final fallbackDate = DateTime(2099, 12, 31);
     DateTime nextDate;
     try {
       nextDate = json['nextdate'] != null
           ? DateTime.parse(json['nextdate'] as String)
-          : DateTime.now();
+          : fallbackDate;
     } catch (_) {
-      nextDate = DateTime.now();
+      nextDate = fallbackDate;
     }
 
     return SubscriptionItem(
