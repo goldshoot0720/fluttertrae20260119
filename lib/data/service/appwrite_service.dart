@@ -3,10 +3,10 @@ import 'package:appwrite/models.dart';
 import '../model/subscription_item.dart';
 
 class AppwriteService {
-  static const String endpoint = 'https://fra.cloud.appwrite.io/v1';
-  static const String projectId = '680c76af0037a7d23e44';
-  static const String databaseId = '680c778b000f055f6409';
-  static const String subscriptionCollectionId = '687250d70020221fb26c';
+  static const String endpoint = 'https://sgp.cloud.appwrite.io/v1';
+  static const String projectId = '698212e50017eada99c8';
+  static const String databaseId = '69821743002139037da1';
+  static const String subscriptionCollectionId = '6982182b002e6a6680b4';
 
   late Client client;
   late Databases databases;
