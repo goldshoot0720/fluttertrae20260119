@@ -48,6 +48,8 @@ class AppwriteService {
         lastDocId = documentList.documents.last.$id;
       }
       
+      // 客戶端排序：日期由近到遠，無日期（2099）排最後
+      allSubscriptions.sort((a, b) => a.nextDate.compareTo(b.nextDate));
       return allSubscriptions;
     } catch (e) {
       print('Error getting subscriptions: $e');
