@@ -1,30 +1,52 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:fluttertrae20260119/main.dart';
+import 'package:fluttertrae20260119/data/model/subscription_item.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('SubscriptionItem', () {
+    test('fromJson parses valid date', () {
+      final json = {
+        '\$id': 'abc123',
+        'name': 'Netflix',
+        'site': 'netflix.com',
+        'price': 390,
+        'nextdate': '2026-03-01T00:00:00.000Z',
+        'note': '',
+        'account': 'user@example.com',
+      };
+      final item = SubscriptionItem.fromJson(json);
+      expect(item.name, 'Netflix');
+      expect(item.price, 390);
+      expect(item.nextDate.year, 2026);
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    test('fromJson uses fallback date when nextdate is null', () {
+      final json = {
+        '\$id': 'xyz',
+        'name': 'Test',
+        'site': '',
+        'price': 0,
+        'nextdate': null,
+        'note': '',
+        'account': '',
+      };
+      final item = SubscriptionItem.fromJson(json);
+      expect(item.nextDate, DateTime(2099, 12, 31));
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    test('toJson contains expected keys', () {
+      final item = SubscriptionItem(
+        id: '1',
+        name: 'Spotify',
+        site: 'spotify.com',
+        price: 149,
+        nextDate: DateTime(2026, 4, 1),
+        note: '',
+        account: 'me@test.com',
+      );
+      final json = item.toJson();
+      expect(json['name'], 'Spotify');
+      expect(json['price'], 149);
+      expect(json.containsKey('nextdate'), true);
+    });
   });
 }
