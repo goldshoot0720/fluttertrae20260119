@@ -3,8 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_notifier/local_notifier.dart';
-import 'package:launch_at_startup/launch_at_startup.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'appwrite_service.dart';
@@ -39,15 +37,6 @@ class NotificationService {
         appName: 'SubscriptionManager',
         shortcutPolicy: ShortcutPolicy.requireCreate,
       );
-
-      PackageInfo packageInfo = await PackageInfo.fromPlatform();
-      
-      launchAtStartup.setup(
-        appName: packageInfo.appName,
-        appPath: Platform.resolvedExecutable,
-        packageName: packageInfo.packageName,
-      );
-      await launchAtStartup.enable();
     } else if (Platform.isAndroid) {
       // Android Setup
       const AndroidInitializationSettings initializationSettingsAndroid =

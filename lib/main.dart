@@ -66,7 +66,7 @@ void main() async {
       titleBarStyle: TitleBarStyle.normal,
     );
     windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.hide();
+      await windowManager.show();
     });
   } else if (Platform.isAndroid) {
     Workmanager().initialize(
