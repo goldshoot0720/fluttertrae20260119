@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart';
 import '../model/subscription_item.dart';
@@ -10,16 +11,30 @@ class AppwriteService {
 
   late Client client;
   late Databases databases;
+  final Completer<void> _initCompleter = Completer<void>();
 
   AppwriteService() {
     client = Client()
         .setEndpoint(endpoint)
-        .setProject(projectId)
-        .addHeader('user-agent', 'SubscriptionManager/1.0.0');
+        .setProject(projectId);
     databases = Databases(client);
+    _waitAndOverrideUserAgent();
   }
 
+  /// Appwrite SDK 的 init() 是非同步的，會在完成後用電腦名稱覆蓋 user-agent。
+  /// 這裡等待 SDK init 完成後，再覆寫為純 ASCII 字串。
+  Future<void> _waitAndOverrideUserAgent() async {
+    while (!(client as dynamic).initialized) {
+      await Future.delayed(const Duration(milliseconds: 10));
+    }
+    client.addHeader('user-agent', 'SubscriptionManager/1.0.0');
+    _initCompleter.complete();
+  }
+
+  Future<void> _ensureInit() => _initCompleter.future;
+
   Future<List<SubscriptionItem>> getSubscriptions() async {
+    await _ensureInit();
     try {
       List<SubscriptionItem> allSubscriptions = [];
       String? lastDocId;
@@ -59,6 +74,7 @@ class AppwriteService {
   }
 
   Future<void> addSubscription(SubscriptionItem item) async {
+    await _ensureInit();
     try {
       await databases.createDocument(
         databaseId: databaseId,
@@ -73,6 +89,7 @@ class AppwriteService {
   }
 
   Future<void> updateSubscription(SubscriptionItem item) async {
+    await _ensureInit();
     try {
       await databases.updateDocument(
         databaseId: databaseId,
@@ -87,6 +104,7 @@ class AppwriteService {
   }
 
   Future<void> deleteSubscription(String id) async {
+    await _ensureInit();
     try {
       await databases.deleteDocument(
         databaseId: databaseId,
