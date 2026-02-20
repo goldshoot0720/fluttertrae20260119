@@ -14,7 +14,8 @@ class AppwriteService {
   AppwriteService() {
     client = Client()
         .setEndpoint(endpoint)
-        .setProject(projectId);
+        .setProject(projectId)
+        .addHeader('user-agent', 'SubscriptionManager/1.0.0');
     databases = Databases(client);
   }
 

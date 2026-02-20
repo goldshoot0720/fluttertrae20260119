@@ -89,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
 
     await systemTray.initSystemTray(
       title: "Subscription Manager",
-      iconPath: 'assets/app_icon.ico',
+      iconPath: Platform.isWindows ? r'assets\app_icon.ico' : 'assets/app_icon.png',
     );
 
     final Menu menu = Menu();
