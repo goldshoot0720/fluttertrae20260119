@@ -16,7 +16,7 @@ class AppwriteConfig {
 
   static const String subscriptionCollectionId = String.fromEnvironment(
     'APPWRITE_SUBSCRIPTION_COLLECTION_ID',
-    defaultValue: '6982182b002e6a6680b4',
+    defaultValue: '69b24465002d43df9b00',
   );
 
   static const String bucketId = String.fromEnvironment(
