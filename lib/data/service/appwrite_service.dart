@@ -34,8 +34,22 @@ class AppwriteService {
   Future<void> _ensureInit() => _initCompleter.future;
 
   Future<String> _getSubscriptionCollectionId() {
-    if (AppwriteConfig.subscriptionCollectionId.trim().isNotEmpty) {
+    return _getSubscriptionCollectionIdWithFallback();
+  }
+
+  Future<String> _getSubscriptionCollectionIdWithFallback({
+    bool allowConfiguredId = true,
+  }) {
+    if (allowConfiguredId &&
+        AppwriteConfig.subscriptionCollectionId.trim().isNotEmpty) {
       return Future.value(AppwriteConfig.subscriptionCollectionId);
+    }
+    return _getCollectionIdByName(subscriptionCollectionName);
+  }
+
+  Future<String> _resolveSubscriptionCollectionIdFromName() {
+    if (AppwriteConfig.subscriptionCollectionId.trim().isNotEmpty) {
+      _invalidateCollectionIdCache(subscriptionCollectionName);
     }
     return _getCollectionIdByName(subscriptionCollectionName);
   }
@@ -101,8 +115,8 @@ class AppwriteService {
         rethrow;
       }
 
-      _invalidateCollectionIdCache(subscriptionCollectionName);
-      final refreshedCollectionId = await _getSubscriptionCollectionId();
+      final refreshedCollectionId =
+          await _resolveSubscriptionCollectionIdFromName();
       return action(refreshedCollectionId);
     }
   }
