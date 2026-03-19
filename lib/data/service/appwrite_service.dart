@@ -1,28 +1,26 @@
 import 'dart:async';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart';
+import 'appwrite_config.dart';
 import '../model/subscription_item.dart';
 
 class AppwriteService {
-  static const String endpoint = 'https://sgp.cloud.appwrite.io/v1';
-  static const String projectId = '698212e50017eada99c8';
-  static const String databaseId = '69821743002139037da1';
-  static const String subscriptionCollectionId = '6982182b002e6a6680b4';
+  static const String subscriptionCollectionName = 'subscription';
 
   late Client client;
   late Databases databases;
   final Completer<void> _initCompleter = Completer<void>();
+  final Map<String, Future<String>> _collectionIdFutures = {};
 
   AppwriteService() {
     client = Client()
-        .setEndpoint(endpoint)
-        .setProject(projectId);
+        .setEndpoint(AppwriteConfig.endpoint)
+        .setProject(AppwriteConfig.projectId);
     databases = Databases(client);
     _waitAndOverrideUserAgent();
   }
 
-  /// Appwrite SDK 的 init() 是非同步的，會在完成後用電腦名稱覆蓋 user-agent。
-  /// 這裡等待 SDK init 完成後，再覆寫為純 ASCII 字串。
+  /// Wait until the SDK finishes initialization before overriding headers.
   Future<void> _waitAndOverrideUserAgent() async {
     while (!(client as dynamic).initialized) {
       await Future.delayed(const Duration(milliseconds: 10));
@@ -33,40 +31,104 @@ class AppwriteService {
 
   Future<void> _ensureInit() => _initCompleter.future;
 
+  Future<String> _getSubscriptionCollectionId() {
+    return _getCollectionIdByName(subscriptionCollectionName);
+  }
+
+  Future<String> _getCollectionIdByName(String collectionName) {
+    return _collectionIdFutures[collectionName] ??=
+        _resolveCollectionIdByName(collectionName);
+  }
+
+  Future<String> _resolveCollectionIdByName(String collectionName) async {
+    await _ensureInit();
+
+    final collectionList = await databases.listCollections(
+      databaseId: AppwriteConfig.databaseId,
+    );
+
+    for (final collection in collectionList.collections) {
+      if (collection.name == collectionName) {
+        return collection.$id;
+      }
+    }
+
+    throw Exception(
+      'Collection "$collectionName" not found in database ${AppwriteConfig.databaseId}.',
+    );
+  }
+
+  void _invalidateCollectionIdCache(String collectionName) {
+    _collectionIdFutures.remove(collectionName);
+  }
+
+  Future<T> _withSubscriptionCollection<T>(
+    Future<T> Function(String collectionId) action,
+  ) async {
+    try {
+      final collectionId = await _getSubscriptionCollectionId();
+      return await action(collectionId);
+    } on AppwriteException catch (e) {
+      final looksLikeCollectionIssue =
+          e.code == 404 ||
+          (e.message?.toLowerCase().contains('collection') ?? false);
+
+      if (!looksLikeCollectionIssue) {
+        rethrow;
+      }
+
+      _invalidateCollectionIdCache(subscriptionCollectionName);
+      final refreshedCollectionId = await _getSubscriptionCollectionId();
+      return action(refreshedCollectionId);
+    }
+  }
+
   Future<List<SubscriptionItem>> getSubscriptions() async {
     await _ensureInit();
     try {
-      List<SubscriptionItem> allSubscriptions = [];
-      String? lastDocId;
-      
-      while (true) {
-        final queries = <String>[
-          Query.orderAsc('nextdate'),
-          Query.limit(100),
-        ];
-        if (lastDocId != null) {
-          queries.add(Query.cursorAfter(lastDocId));
+      return await _withSubscriptionCollection((collectionId) async {
+        final allSubscriptions = <SubscriptionItem>[];
+        String? lastDocId;
+
+        while (true) {
+          final queries = <String>[
+            Query.orderAsc('nextdate'),
+            Query.limit(100),
+          ];
+          if (lastDocId != null) {
+            queries.add(Query.cursorAfter(lastDocId));
+          }
+
+          final documentList = await databases.listDocuments(
+            databaseId: AppwriteConfig.databaseId,
+            collectionId: collectionId,
+            queries: queries,
+          );
+
+          if (documentList.documents.isEmpty) {
+            break;
+          }
+
+          allSubscriptions.addAll(
+            documentList.documents.map(
+              (doc) => SubscriptionItem.fromDocument(
+                id: doc.$id,
+                data: doc.data,
+                createdAt: doc.$createdAt,
+                updatedAt: doc.$updatedAt,
+              ),
+            ),
+          );
+
+          if (documentList.documents.length < 100) {
+            break;
+          }
+          lastDocId = documentList.documents.last.$id;
         }
-        
-        final documentList = await databases.listDocuments(
-          databaseId: databaseId,
-          collectionId: subscriptionCollectionId,
-          queries: queries,
-        );
-        
-        if (documentList.documents.isEmpty) break;
-        
-        allSubscriptions.addAll(
-          documentList.documents.map((doc) => SubscriptionItem.fromJson(doc.data)),
-        );
-        
-        if (documentList.documents.length < 100) break;
-        lastDocId = documentList.documents.last.$id;
-      }
-      
-      // 客戶端排序：日期由近到遠，無日期（2099）排最後
-      allSubscriptions.sort((a, b) => a.nextDate.compareTo(b.nextDate));
-      return allSubscriptions;
+
+        allSubscriptions.sort((a, b) => a.nextDate.compareTo(b.nextDate));
+        return allSubscriptions;
+      });
     } catch (e) {
       print('Error getting subscriptions: $e');
       rethrow;
@@ -76,12 +138,14 @@ class AppwriteService {
   Future<void> addSubscription(SubscriptionItem item) async {
     await _ensureInit();
     try {
-      await databases.createDocument(
-        databaseId: databaseId,
-        collectionId: subscriptionCollectionId,
-        documentId: ID.unique(),
-        data: item.toJson(),
-      );
+      await _withSubscriptionCollection((collectionId) {
+        return databases.createDocument(
+          databaseId: AppwriteConfig.databaseId,
+          collectionId: collectionId,
+          documentId: ID.unique(),
+          data: item.toJson(),
+        );
+      });
     } catch (e) {
       print('Error adding subscription: $e');
       rethrow;
@@ -90,13 +154,20 @@ class AppwriteService {
 
   Future<void> updateSubscription(SubscriptionItem item) async {
     await _ensureInit();
-    try {
-      await databases.updateDocument(
-        databaseId: databaseId,
-        collectionId: subscriptionCollectionId,
-        documentId: item.id,
-        data: item.toJson(),
+    if (item.id.trim().isEmpty) {
+      throw ArgumentError(
+        'Cannot update subscription without a document id.',
       );
+    }
+    try {
+      await _withSubscriptionCollection((collectionId) {
+        return databases.updateDocument(
+          databaseId: AppwriteConfig.databaseId,
+          collectionId: collectionId,
+          documentId: item.id,
+          data: item.toJson(),
+        );
+      });
     } catch (e) {
       print('Error updating subscription: $e');
       rethrow;
@@ -105,12 +176,19 @@ class AppwriteService {
 
   Future<void> deleteSubscription(String id) async {
     await _ensureInit();
-    try {
-      await databases.deleteDocument(
-        databaseId: databaseId,
-        collectionId: subscriptionCollectionId,
-        documentId: id,
+    if (id.trim().isEmpty) {
+      throw ArgumentError(
+        'Cannot delete subscription without a document id.',
       );
+    }
+    try {
+      await _withSubscriptionCollection((collectionId) {
+        return databases.deleteDocument(
+          databaseId: AppwriteConfig.databaseId,
+          collectionId: collectionId,
+          documentId: id,
+        );
+      });
     } catch (e) {
       print('Error deleting subscription: $e');
       rethrow;

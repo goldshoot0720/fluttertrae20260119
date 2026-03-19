@@ -146,6 +146,27 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
     }
   }
 
+  void _showErrorSnackBar(String message) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Color(0xFFFF5252), size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1A1A2E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   List<SubscriptionItem> _getExpiringItems() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -206,8 +227,12 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
     );
 
     if (confirmed == true) {
-      await _appwriteService.deleteSubscription(id);
-      _loadSubscriptions();
+      try {
+        await _appwriteService.deleteSubscription(id);
+        _loadSubscriptions();
+      } catch (e) {
+        _showErrorSnackBar('刪除失敗: $e');
+      }
     }
   }
 
@@ -217,14 +242,18 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
       builder: (context) => SubscriptionDialog(
         item: item,
         onSave: (newItem) async {
-          if (item == null) {
-            await _appwriteService.addSubscription(newItem);
-          } else {
-            newItem.id = item.id;
-            await _appwriteService.updateSubscription(newItem);
+          try {
+            if (item == null) {
+              await _appwriteService.addSubscription(newItem);
+            } else {
+              newItem.id = item.id;
+              await _appwriteService.updateSubscription(newItem);
+            }
+            _loadSubscriptions();
+            Navigator.pop(context);
+          } catch (e) {
+            _showErrorSnackBar(item == null ? '新增失敗: $e' : '更新失敗: $e');
           }
-          _loadSubscriptions();
-          Navigator.pop(context);
         },
       ),
     );

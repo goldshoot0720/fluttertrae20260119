@@ -46,6 +46,20 @@ class SubscriptionItem {
     );
   }
 
+  factory SubscriptionItem.fromDocument({
+    required String id,
+    required Map<String, dynamic> data,
+    String? createdAt,
+    String? updatedAt,
+  }) {
+    return SubscriptionItem.fromJson({
+      ...data,
+      '\$id': id,
+      if (createdAt != null) '\$createdAt': createdAt,
+      if (updatedAt != null) '\$updatedAt': updatedAt,
+    });
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'name': name,
