@@ -84,12 +84,26 @@ void main() async {
       ),
     );
   }
-  
-  final notificationService = NotificationService();
-  await notificationService.init();
-  await OilPriceService().init();
 
   runApp(const MyApp());
+  _initializeAppServices();
+}
+
+void _initializeAppServices() {
+  Future<void>(() async {
+    try {
+      final notificationService = NotificationService();
+      await notificationService.init();
+    } catch (e) {
+      print('Notification service init failed: $e');
+    }
+
+    try {
+      await OilPriceService().init();
+    } catch (e) {
+      print('Oil price service init failed: $e');
+    }
+  });
 }
 
 class MyApp extends StatelessWidget {
