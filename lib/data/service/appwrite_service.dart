@@ -34,6 +34,9 @@ class AppwriteService {
   Future<void> _ensureInit() => _initCompleter.future;
 
   Future<String> _getSubscriptionCollectionId() {
+    if (AppwriteConfig.subscriptionCollectionId.trim().isNotEmpty) {
+      return Future.value(AppwriteConfig.subscriptionCollectionId);
+    }
     return _getCollectionIdByName(subscriptionCollectionName);
   }
 
