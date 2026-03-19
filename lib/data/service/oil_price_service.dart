@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show HttpException;
 
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -153,24 +154,52 @@ class OilPriceService {
   }
 
   Future<String> _downloadHtml(String url) async {
-    final client = HttpClient();
-    try {
-      final request = await client.getUrl(Uri.parse(url));
-      request.headers.set(
-        HttpHeaders.userAgentHeader,
-        'SubscriptionManager/1.0.0 OilMonitor',
-      );
-      final response = await request.close();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw HttpException(
-          'Failed to fetch OQD marker page: HTTP ${response.statusCode}',
-          uri: Uri.parse(url),
-        );
+    final urls = <String>[
+      url,
+      if (url == kOqdSourceUrl) 'https://gulfmerc.com/',
+    ];
+
+    Object? lastError;
+
+    for (final currentUrl in urls) {
+      for (var attempt = 0; attempt < 3; attempt++) {
+        final client = http.Client();
+        try {
+          final response = await client
+              .get(
+                Uri.parse(currentUrl),
+                headers: const {
+                  'User-Agent': 'SubscriptionManager/1.0.0 OilMonitor',
+                  'Accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'Accept-Encoding': 'identity',
+                  'Connection': 'close',
+                  'Cache-Control': 'no-cache',
+                },
+              )
+              .timeout(const Duration(seconds: 20));
+
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            return utf8.decode(response.bodyBytes, allowMalformed: true);
+          }
+
+          lastError = HttpException(
+            'Failed to fetch OQD marker page: HTTP ${response.statusCode}',
+            uri: Uri.parse(currentUrl),
+          );
+        } catch (e) {
+          lastError = e;
+          if (attempt < 2) {
+            await Future.delayed(Duration(milliseconds: 600 * (attempt + 1)));
+          }
+        } finally {
+          client.close();
+        }
       }
-      return response.transform(utf8.decoder).join();
-    } finally {
-      client.close(force: true);
     }
+
+    throw lastError ??
+        const HttpException('Failed to fetch OQD marker page for an unknown reason.');
   }
 
   static OilPricePoint parseMarkerPriceFromHtml(String html) {
