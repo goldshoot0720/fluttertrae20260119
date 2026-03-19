@@ -5,6 +5,7 @@ import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 import '../data/model/subscription_item.dart';
 import '../data/service/appwrite_service.dart';
+import 'oil_monitor_screen.dart';
 import 'widgets/subscription_card.dart';
 import 'widgets/subscription_dialog.dart';
 
@@ -163,6 +164,14 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
         backgroundColor: const Color(0xFF1A1A2E),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Future<void> _openOilMonitor() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const OilMonitorScreen(),
       ),
     );
   }
@@ -763,6 +772,62 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
                       : const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF8899AA)),
                 ),
               ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: PopupMenuButton<String>(
+              tooltip: 'Open menu',
+              color: const Color(0xFF16213E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(
+                  color: const Color(0xFF2A2A4E).withOpacity(0.7),
+                ),
+              ),
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16213E),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF2A2A4E).withOpacity(0.5),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.dashboard_customize_rounded,
+                  size: 18,
+                  color: Color(0xFF8899AA),
+                ),
+              ),
+              onSelected: (value) {
+                if (value == 'oil_monitor') {
+                  _openOilMonitor();
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem<String>(
+                  enabled: false,
+                  value: 'subscription',
+                  child: Row(
+                    children: [
+                      Icon(Icons.subscriptions_rounded, size: 18, color: Colors.white70),
+                      SizedBox(width: 10),
+                      Text('訂閱管理', style: TextStyle(color: Colors.white70)),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'oil_monitor',
+                  child: Row(
+                    children: [
+                      Icon(Icons.oil_barrel_rounded, size: 18, color: Color(0xFF80DEEA)),
+                      SizedBox(width: 10),
+                      Text('石油監控'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 8),

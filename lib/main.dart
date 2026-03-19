@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:workmanager/workmanager.dart';
 import 'data/service/notification_service.dart';
+import 'data/service/oil_price_service.dart';
 import 'ui/home_screen.dart';
 
 @pragma('vm:entry-point')
@@ -12,6 +13,7 @@ void callbackDispatcher() {
     print("Native called background task: $task");
     try {
       await checkAndNotifyBackground();
+      await syncOilPriceBackground();
     } catch (e) {
       print("Error in background task: $e");
     }
@@ -85,6 +87,7 @@ void main() async {
   
   final notificationService = NotificationService();
   await notificationService.init();
+  await OilPriceService().init();
 
   runApp(const MyApp());
 }

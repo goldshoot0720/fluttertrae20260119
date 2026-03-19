@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart';
 import 'appwrite_config.dart';
@@ -43,14 +45,33 @@ class AppwriteService {
   Future<String> _resolveCollectionIdByName(String collectionName) async {
     await _ensureInit();
 
-    final collectionList = await databases.listCollections(
-      databaseId: AppwriteConfig.databaseId,
-    );
+    final httpClient = HttpClient();
+    try {
+      final uri = Uri.parse(
+        '${AppwriteConfig.endpoint}/databases/${AppwriteConfig.databaseId}/collections',
+      );
+      final request = await httpClient.getUrl(uri);
+      request.headers.set('X-Appwrite-Project', AppwriteConfig.projectId);
+      request.headers.set('X-Appwrite-Response-Format', '1.8.0');
 
-    for (final collection in collectionList.collections) {
-      if (collection.name == collectionName) {
-        return collection.$id;
+      final response = await request.close();
+      final responseBody = await response.transform(utf8.decoder).join();
+      final responseData = jsonDecode(responseBody);
+      final collections = responseData['collections'];
+
+      if (collections is List) {
+        for (final collection in collections) {
+          if (collection is Map<String, dynamic> &&
+              collection['name'] == collectionName) {
+            final collectionId = collection[r'$id'];
+            if (collectionId is String && collectionId.isNotEmpty) {
+              return collectionId;
+            }
+          }
+        }
       }
+    } finally {
+      httpClient.close(force: true);
     }
 
     throw Exception(
