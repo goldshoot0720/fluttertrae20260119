@@ -42,18 +42,14 @@ class _OilMonitorScreenState extends State<OilMonitorScreen> {
       }
 
       final history = await _oilPriceService.loadHistory();
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         _history = history;
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString();
@@ -73,9 +69,7 @@ class _OilMonitorScreenState extends State<OilMonitorScreen> {
         allowBeforeOnePm: true,
       );
       final history = await _oilPriceService.loadHistory();
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         _history = history;
@@ -83,10 +77,7 @@ class _OilMonitorScreenState extends State<OilMonitorScreen> {
         _isSyncing = false;
       });
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _isSyncing = false;
         _errorMessage = e.toString();
@@ -97,85 +88,141 @@ class _OilMonitorScreenState extends State<OilMonitorScreen> {
   @override
   Widget build(BuildContext context) {
     final latest = _history.isEmpty ? null : _history.last;
+    final wide = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D20),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D20),
-        surfaceTintColor: Colors.transparent,
-        title: const Text(
-          '石油監控',
-          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.3),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFFF4EFE5),
+              Color(0xFFEADFCB),
+              Color(0xFFF6F2EA),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: FilledButton.tonalIcon(
-              onPressed: _isSyncing ? null : _refreshNow,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF16213E),
-                foregroundColor: Colors.white,
+        child: SafeArea(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _refreshNow,
+                  color: const Color(0xFF0F766E),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                    children: [
+                      _buildTopBar(context),
+                      const SizedBox(height: 16),
+                      if (_errorMessage != null)
+                        _Banner(message: _errorMessage!, error: true),
+                      if (_statusMessage != null) _Banner(message: _statusMessage!),
+                      if (_errorMessage != null || _statusMessage != null)
+                        const SizedBox(height: 16),
+                      if (wide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 6, child: _buildHeroCard(latest)),
+                            const SizedBox(width: 16),
+                            Expanded(flex: 4, child: _buildGuideCard()),
+                          ],
+                        )
+                      else ...[
+                        _buildHeroCard(latest),
+                        const SizedBox(height: 16),
+                        _buildGuideCard(),
+                      ],
+                      const SizedBox(height: 16),
+                      if (wide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 6, child: _buildChartCard()),
+                            const SizedBox(width: 16),
+                            Expanded(flex: 4, child: _buildHistoryCard()),
+                          ],
+                        )
+                      else ...[
+                        _buildChartCard(),
+                        const SizedBox(height: 16),
+                        _buildHistoryCard(),
+                      ],
+                    ],
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Oil Price Monitor',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF1E1B18),
+                ),
               ),
-              icon: _isSyncing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.oil_barrel_rounded, size: 18),
-              label: const Text('立即抓取'),
+              const SizedBox(height: 6),
+              Text(
+                '追蹤 OQD Daily Marker Price，快速查看更新狀態與近期走勢。',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        FilledButton.tonalIcon(
+          onPressed: _isSyncing ? null : _refreshNow,
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFE7F2EF),
+            foregroundColor: const Color(0xFF184F49),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
             ),
           ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _refreshNow,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                children: [
-                  if (_errorMessage != null) _buildErrorBanner(_errorMessage!),
-                  if (_statusMessage != null) _buildStatusBanner(_statusMessage!),
-                  _buildHeroCard(latest),
-                  const SizedBox(height: 16),
-                  _buildGuideCard(),
-                  const SizedBox(height: 16),
-                  _buildChartCard(),
-                  const SizedBox(height: 16),
-                  _buildHistoryCard(),
-                ],
-              ),
-            ),
+          icon: _isSyncing
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.refresh_rounded),
+          label: Text(_isSyncing ? '同步中' : '立即同步'),
+        ),
+      ],
     );
   }
 
   Widget _buildHeroCard(OilPricePoint? latest) {
     final marketDate = latest == null
         ? '--'
-        : DateFormat('yyyy/MM/dd').format(latest.marketDate);
+        : DateFormat('yyyy.MM.dd').format(latest.marketDate);
     final fetchedAt = latest == null
         ? '--'
-        : DateFormat('yyyy/MM/dd HH:mm').format(latest.fetchedAt.toLocal());
+        : DateFormat('yyyy.MM.dd HH:mm').format(latest.fetchedAt.toLocal());
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF163042), Color(0xFF1E2748), Color(0xFF302347)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        color: const Color(0xFF1F4A46),
+        borderRadius: BorderRadius.circular(34),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF00BCD4).withOpacity(0.12),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
+            color: Color(0x22000000),
+            blurRadius: 28,
+            offset: Offset(0, 16),
           ),
         ],
-        border: Border.all(color: const Color(0xFF3E527A).withOpacity(0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,65 +230,46 @@ class _OilMonitorScreenState extends State<OilMonitorScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 62,
+                height: 62,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(22),
                 ),
                 child: const Icon(
-                  Icons.show_chart_rounded,
-                  color: Color(0xFF80DEEA),
-                  size: 24,
+                  Icons.water_drop_outlined,
+                  color: Color(0xFFF4D58D),
+                  size: 28,
                 ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              const SizedBox(width: 14),
+              Expanded(
                 child: Text(
-                  'OQD Daily Marker Price',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  'Daily market signal for fleet and energy tracking.',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: const Color(0xFFEAF2F0),
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 26),
           Text(
             latest == null ? '--' : latest.price.toStringAsFixed(2),
-            style: const TextStyle(
-              fontSize: 40,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.6,
-            ),
+            style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Market date: $marketDate',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFFB9C8DE),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Last synced: $fetchedAt',
-            style: const TextStyle(fontSize: 13, color: Color(0xFF92A5C6)),
-          ),
-          const SizedBox(height: 18),
-          const Wrap(
+          const SizedBox(height: 10),
+          Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _OilTag(
-                icon: Icons.schedule_rounded,
-                label: '13:00 自動抓取',
-              ),
-              _OilTag(
-                icon: Icons.mobile_friendly_rounded,
-                label: '開啟 App 自動更新',
-              ),
+              _DataChip(label: 'Market date $marketDate'),
+              _DataChip(label: 'Last synced $fetchedAt'),
+              const _DataChip(label: 'Update target 13:00'),
             ],
           ),
         ],
@@ -251,27 +279,27 @@ class _OilMonitorScreenState extends State<OilMonitorScreen> {
 
   Widget _buildGuideCard() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: const Color(0xFF171B32),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF2C3358)),
+        color: const Color(0xFFF9F5EC),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: const Color(0xFFD9CFBF)),
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '使用引導',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            '使用說明',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
           ),
-          SizedBox(height: 12),
-          Text('1. 系統會在開啟 App 時先同步一次 GME 首頁上的 OQD Daily Marker Price。'),
-          SizedBox(height: 8),
-          Text('2. App 在前景執行時，會持續檢查下午 1 點後的每日資料並自動寫入歷史紀錄。'),
-          SizedBox(height: 8),
-          Text('3. Android 背景排程也會每小時喚醒一次，13:00 後若當日尚未抓取就會補抓。'),
-          SizedBox(height: 8),
-          Text('4. 圖表會依歷史資料顯示趨勢；資料來源為 https://www.gulfmerc.com/ 首頁。'),
+          SizedBox(height: 14),
+          _GuideLine('系統會讀取 OQD Daily Marker Price 的歷史資料。'),
+          SizedBox(height: 10),
+          _GuideLine('進入頁面時會先嘗試同步，手動按鈕可立即強制更新。'),
+          SizedBox(height: 10),
+          _GuideLine('如果當天來源尚未更新，畫面會保留最近一次成功抓取結果。'),
+          SizedBox(height: 10),
+          _GuideLine('下方圖表與列表會協助你快速比對近期波動。'),
         ],
       ),
     );
@@ -279,38 +307,37 @@ class _OilMonitorScreenState extends State<OilMonitorScreen> {
 
   Widget _buildChartCard() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: const Color(0xFF171B32),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF2C3358)),
+        color: const Color(0xFFF9F5EC),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: const Color(0xFFD9CFBF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text(
-                '價格圖表',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              const Expanded(
+                child: Text(
+                  '價格走勢',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                ),
               ),
-              const Spacer(),
               Text(
                 '${_history.length} points',
-                style: const TextStyle(color: Color(0xFF8EA1C4)),
+                style: const TextStyle(
+                  color: Color(0xFF6D645B),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 220,
+            height: 260,
             child: _history.length < 2
-                ? const Center(
-                    child: Text(
-                      '抓到兩筆以上資料後，這裡會顯示趨勢圖。',
-                      style: TextStyle(color: Color(0xFF8EA1C4)),
-                    ),
-                  )
+                ? const Center(child: Text('資料筆數不足，暫時無法繪製走勢圖。'))
                 : CustomPaint(
                     painter: _OilHistoryChartPainter(_history),
                     child: const SizedBox.expand(),
@@ -323,47 +350,50 @@ class _OilMonitorScreenState extends State<OilMonitorScreen> {
 
   Widget _buildHistoryCard() {
     final recentHistory = _history.reversed.take(10).toList();
-
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: const Color(0xFF171B32),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF2C3358)),
+        color: const Color(0xFFF9F5EC),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: const Color(0xFFD9CFBF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '最近紀錄',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            '近期紀錄',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           if (recentHistory.isEmpty)
-            const Text(
-              '目前還沒有油價資料，請先按「立即抓取」或重新開啟 App。',
-              style: TextStyle(color: Color(0xFF8EA1C4)),
-            )
+            const Text('目前還沒有歷史資料。')
           else
             ...recentHistory.map((point) {
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        DateFormat('yyyy/MM/dd').format(point.marketDate),
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFBF4),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          DateFormat('yyyy.MM.dd').format(point.marketDate),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
-                    ),
-                    Text(
-                      point.price.toStringAsFixed(2),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF80DEEA),
+                      Text(
+                        point.price.toStringAsFixed(2),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F766E),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }),
@@ -371,63 +401,80 @@ class _OilMonitorScreenState extends State<OilMonitorScreen> {
       ),
     );
   }
+}
 
-  Widget _buildErrorBanner(String message) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF4A1E2A),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE57373)),
-        ),
-        child: Text(message),
-      ),
-    );
-  }
+class _Banner extends StatelessWidget {
+  final String message;
+  final bool error;
 
-  Widget _buildStatusBanner(String message) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF173B38),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF4DD0E1)),
+  const _Banner({
+    required this.message,
+    this.error = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: error ? const Color(0xFFFCEAE8) : const Color(0xFFE8F3EF),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: error ? const Color(0xFFF0C8C2) : const Color(0xFFB9D9D2),
         ),
-        child: Text(message),
       ),
+      child: Text(message),
     );
   }
 }
 
-class _OilTag extends StatelessWidget {
-  final IconData icon;
+class _DataChip extends StatelessWidget {
   final String label;
 
-  const _OilTag({
-    required this.icon,
-    required this.label,
-  });
+  const _DataChip({required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: const Color(0xFF80DEEA)),
-          const SizedBox(width: 6),
-          Text(label),
-        ],
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFFE5EFEC),
+          fontWeight: FontWeight.w600,
+        ),
       ),
+    );
+  }
+}
+
+class _GuideLine extends StatelessWidget {
+  final String text;
+
+  const _GuideLine(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          margin: const EdgeInsets.only(top: 6),
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F766E),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Text(text)),
+      ],
     );
   }
 }
@@ -439,12 +486,10 @@ class _OilHistoryChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (history.length < 2) {
-      return;
-    }
+    if (history.length < 2) return;
 
-    const leftPadding = 8.0;
-    const rightPadding = 8.0;
+    const leftPadding = 14.0;
+    const rightPadding = 14.0;
     const topPadding = 16.0;
     const bottomPadding = 28.0;
     final chartWidth = size.width - leftPadding - rightPadding;
@@ -456,7 +501,7 @@ class _OilHistoryChartPainter extends CustomPainter {
     final valueSpan = max(maxPrice - minPrice, 1.0);
 
     final gridPaint = Paint()
-      ..color = const Color(0xFF2C3358)
+      ..color = const Color(0xFFE1D7C8)
       ..strokeWidth = 1;
 
     for (var i = 0; i < 4; i++) {
@@ -487,8 +532,22 @@ class _OilHistoryChartPainter extends CustomPainter {
       final previous = points[i - 1];
       final current = points[i];
       final controlX = (previous.dx + current.dx) / 2;
-      path.cubicTo(controlX, previous.dy, controlX, current.dy, current.dx, current.dy);
-      fillPath.cubicTo(controlX, previous.dy, controlX, current.dy, current.dx, current.dy);
+      path.cubicTo(
+        controlX,
+        previous.dy,
+        controlX,
+        current.dy,
+        current.dx,
+        current.dy,
+      );
+      fillPath.cubicTo(
+        controlX,
+        previous.dy,
+        controlX,
+        current.dy,
+        current.dx,
+        current.dy,
+      );
     }
 
     fillPath
@@ -497,23 +556,23 @@ class _OilHistoryChartPainter extends CustomPainter {
 
     final fillPaint = Paint()
       ..shader = const LinearGradient(
-        colors: [Color(0x6632E0C4), Color(0x0032E0C4)],
+        colors: [Color(0x55157A6E), Color(0x00157A6E)],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..style = PaintingStyle.fill;
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final linePaint = Paint()
-      ..color = const Color(0xFF80DEEA)
-      ..strokeWidth = 3
+      ..color = const Color(0xFF0F766E)
+      ..strokeWidth = 3.2
       ..style = PaintingStyle.stroke;
+
+    final dotPaint = Paint()..color = const Color(0xFFCAA75B);
 
     canvas.drawPath(fillPath, fillPaint);
     canvas.drawPath(path, linePaint);
 
-    final dotPaint = Paint()..color = const Color(0xFFB2EBF2);
     for (final point in points) {
-      canvas.drawCircle(point, 4, dotPaint);
+      canvas.drawCircle(point, 4.5, dotPaint);
     }
 
     _drawLabels(canvas, size, minPrice, maxPrice);
@@ -526,26 +585,26 @@ class _OilHistoryChartPainter extends CustomPainter {
     _paintText(
       canvas,
       text: maxPrice.toStringAsFixed(2),
-      offset: const Offset(8, 0),
-      color: const Color(0xFF8EA1C4),
+      offset: const Offset(14, 0),
+      color: const Color(0xFF6D645B),
     );
     _paintText(
       canvas,
       text: minPrice.toStringAsFixed(2),
-      offset: Offset(8, size.height - 46),
-      color: const Color(0xFF8EA1C4),
+      offset: Offset(14, size.height - 48),
+      color: const Color(0xFF6D645B),
     );
     _paintText(
       canvas,
       text: firstDate,
-      offset: Offset(8, size.height - 22),
-      color: const Color(0xFF8EA1C4),
+      offset: Offset(14, size.height - 24),
+      color: const Color(0xFF6D645B),
     );
     _paintText(
       canvas,
       text: lastDate,
-      offset: Offset(size.width - 44, size.height - 22),
-      color: const Color(0xFF8EA1C4),
+      offset: Offset(size.width - 48, size.height - 24),
+      color: const Color(0xFF6D645B),
     );
   }
 
@@ -561,7 +620,7 @@ class _OilHistoryChartPainter extends CustomPainter {
         style: TextStyle(
           color: color,
           fontSize: 11,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
       textDirection: ui.TextDirection.ltr,
