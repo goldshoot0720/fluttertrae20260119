@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart';
+import 'package:appwrite/src/enums.dart';
 import 'appwrite_config.dart';
 import '../model/subscription_item.dart';
 
@@ -43,13 +44,17 @@ class AppwriteService {
   Future<String> _resolveCollectionIdByName(String collectionName) async {
     await _ensureInit();
 
-    final collectionList = await databases.listCollections(
-      databaseId: AppwriteConfig.databaseId,
+    final response = await client.call(
+      HttpMethod.get,
+      path: '/databases/${AppwriteConfig.databaseId}/collections',
     );
 
-    for (final collection in collectionList.collections) {
-      if (collection.name == collectionName) {
-        return collection.$id;
+    final collections = (response.data['collections'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>();
+
+    for (final collection in collections) {
+      if (collection['name'] == collectionName) {
+        return collection[r'$id'] as String;
       }
     }
 
