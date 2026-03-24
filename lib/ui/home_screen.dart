@@ -1,8 +1,10 @@
 import 'dart:io';
-import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
+
 import '../data/model/subscription_item.dart';
 import '../data/service/appwrite_service.dart';
 import 'oil_monitor_screen.dart';
@@ -10,53 +12,21 @@ import 'widgets/subscription_card.dart';
 import 'widgets/subscription_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with WindowListener {
   final AppwriteService _appwriteService = AppwriteService();
+
   List<SubscriptionItem> _subscriptions = [];
   bool _isLoading = true;
-  bool _bannerDismissed = false;
-  late AnimationController _bannerAnimController;
-  late Animation<double> _bannerAnimation;
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
-  late AnimationController _fabController;
-  late Animation<double> _fabAnimation;
 
   @override
   void initState() {
     super.initState();
-    _bannerAnimController = AnimationController(
-      duration: const Duration(milliseconds: 700),
-      vsync: this,
-    );
-    _bannerAnimation = CurvedAnimation(
-      parent: _bannerAnimController,
-      curve: Curves.easeOutBack,
-    );
-    
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
-    _fabController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _fabAnimation = CurvedAnimation(
-      parent: _fabController,
-      curve: Curves.elasticOut,
-    );
-
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.addListener(this);
       _initSystemTray();
@@ -66,9 +36,6 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
 
   @override
   void dispose() {
-    _bannerAnimController.dispose();
-    _pulseController.dispose();
-    _fabController.dispose();
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.removeListener(this);
     }
@@ -78,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
   @override
   void onWindowClose() async {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      bool isPreventClose = await windowManager.isPreventClose();
+      final isPreventClose = await windowManager.isPreventClose();
       if (isPreventClose) {
         windowManager.hide();
       }
@@ -86,21 +53,19 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
   }
 
   Future<void> _initSystemTray() async {
-    final SystemTray systemTray = SystemTray();
-
+    final systemTray = SystemTray();
     await systemTray.initSystemTray(
       title: "Subscription Manager",
       iconPath: Platform.isWindows ? r'assets\app_icon.ico' : 'assets/app_icon.png',
     );
 
-    final Menu menu = Menu();
+    final menu = Menu();
     await menu.buildFrom([
-      MenuItemLabel(label: 'Show', onClicked: (menuItem) => windowManager.show()),
-      MenuItemLabel(label: 'Exit', onClicked: (menuItem) => windowManager.close()),
+      MenuItemLabel(label: 'Show', onClicked: (_) => windowManager.show()),
+      MenuItemLabel(label: 'Exit', onClicked: (_) => windowManager.close()),
     ]);
 
     await systemTray.setContextMenu(menu);
-
     systemTray.registerSystemTrayEventHandler((eventName) {
       if (eventName == kSystemTrayEventClick) {
         windowManager.show();
@@ -108,145 +73,65 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
         systemTray.popUpContextMenu();
       }
     });
-
     await windowManager.setPreventClose(true);
   }
 
   Future<void> _loadSubscriptions() async {
     setState(() => _isLoading = true);
     try {
-      final subs = await _appwriteService.getSubscriptions();
+      final items = await _appwriteService.getSubscriptions();
+      if (!mounted) return;
       setState(() {
-        _subscriptions = subs;
+        _subscriptions = items;
         _isLoading = false;
-        _bannerDismissed = false;
       });
-      // Animate banner in if there are expiring items
-      if (_getExpiringItems().isNotEmpty) {
-        _bannerAnimController.forward(from: 0);
-      }
-      _fabController.forward(from: 0);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Color(0xFFFF5252), size: 18),
-                const SizedBox(width: 8),
-                Expanded(child: Text('載入失敗: $e')),
-              ],
-            ),
-            backgroundColor: const Color(0xFF1A1A2E),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
+      _showMessage('載入訂閱資料失敗：$e', isError: true);
     }
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Color(0xFFFF5252), size: 18),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: const Color(0xFF1A1A2E),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
   }
 
   Future<void> _openOilMonitor() async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const OilMonitorScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const OilMonitorScreen()),
     );
   }
 
-  List<SubscriptionItem> _getExpiringItems() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    return _subscriptions.where((item) {
-      final itemDate = DateTime(item.nextDate.year, item.nextDate.month, item.nextDate.day);
-      final diff = itemDate.difference(today).inDays;
-      return diff >= 0 && diff <= 3;
-    }).toList()
-      ..sort((a, b) => a.nextDate.compareTo(b.nextDate));
-  }
-
-  int get _totalMonthlyCost {
-    int total = 0;
-    for (var item in _subscriptions) {
-      total += item.price;
-    }
-    return total;
-  }
-
-  Future<void> _deleteSubscription(String id) async {
-    // Show confirmation dialog
+  Future<void> _deleteSubscription(String id, String name) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF5252).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.delete_forever_rounded, color: Color(0xFFFF5252), size: 20),
-            ),
-            const SizedBox(width: 10),
-            const Text('確認刪除', style: TextStyle(fontSize: 18)),
-          ],
-        ),
-        content: const Text('確定要刪除此訂閱嗎？此操作無法復原。',
-            style: TextStyle(color: Color(0xFF8899AA))),
+        title: const Text('刪除訂閱項目'),
+        content: Text('確定要刪除「$name」嗎？這筆資料會從清單中移除。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消', style: TextStyle(color: Color(0xFF8899AA))),
+            child: const Text('取消'),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF5252),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFB42318),
             ),
-            child: const Text('刪除', style: TextStyle(color: Colors.white)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('刪除'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true) {
-      try {
-        await _appwriteService.deleteSubscription(id);
-        _loadSubscriptions();
-      } catch (e) {
-        _showErrorSnackBar('刪除失敗: $e');
-      }
+    if (confirmed != true) return;
+
+    try {
+      await _appwriteService.deleteSubscription(id);
+      await _loadSubscriptions();
+    } catch (e) {
+      _showMessage('刪除失敗：$e', isError: true);
     }
   }
 
   void _showEditDialog(SubscriptionItem? item) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => SubscriptionDialog(
         item: item,
@@ -258,713 +143,575 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener, TickerProv
               newItem.id = item.id;
               await _appwriteService.updateSubscription(newItem);
             }
-            _loadSubscriptions();
+            if (!mounted) return;
             Navigator.pop(context);
+            await _loadSubscriptions();
+            _showMessage(item == null ? '訂閱項目已新增' : '訂閱項目已更新');
           } catch (e) {
-            _showErrorSnackBar(item == null ? '新增失敗: $e' : '更新失敗: $e');
+            _showMessage(item == null ? '新增失敗：$e' : '更新失敗：$e', isError: true);
           }
         },
       ),
     );
   }
 
-  Widget _buildSummaryHeader() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A1A3E), Color(0xFF141430), Color(0xFF16213E)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          stops: [0.0, 0.5, 1.0],
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF2A2A4E).withOpacity(0.6), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF7C4DFF).withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          _buildStatCard(
-            icon: Icons.subscriptions_rounded,
-            label: '訂閱總數',
-            value: '${_subscriptions.length}',
-            color: const Color(0xFF7C4DFF),
-          ),
-          const SizedBox(width: 12),
-          _buildStatCard(
-            icon: Icons.payments_rounded,
-            label: '總費用',
-            value: '\$${_totalMonthlyCost}',
-            color: const Color(0xFF00E5FF),
-          ),
-          const SizedBox(width: 12),
-          _buildStatCard(
-            icon: _getExpiringItems().isNotEmpty
-                ? Icons.notifications_active_rounded
-                : Icons.check_circle_rounded,
-            label: '即將到期',
-            value: '${_getExpiringItems().length}',
-            color: _getExpiringItems().isNotEmpty
-                ? const Color(0xFFFF5252)
-                : const Color(0xFF69F0AE),
-            isPulsing: _getExpiringItems().isNotEmpty,
-          ),
-        ],
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor:
+            isError ? const Color(0xFF7A1F1A) : const Color(0xFF23423E),
+        content: Text(message),
       ),
     );
   }
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-    bool isPulsing = false,
-  }) {
-    Widget iconWidget = Icon(icon, color: color, size: 22);
-    if (isPulsing) {
-      iconWidget = AnimatedBuilder(
-        animation: _pulseAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: 0.9 + (_pulseAnimation.value * 0.15),
-            child: Icon(icon, color: color.withOpacity(0.7 + _pulseAnimation.value * 0.3), size: 22),
-          );
-        },
-      );
-    }
-
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              color.withOpacity(0.12),
-              color.withOpacity(0.04),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2), width: 1),
-        ),
-        child: Column(
-          children: [
-            iconWidget,
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: color,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF8899AA),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExpiringBanner() {
-    final expiringItems = _getExpiringItems();
-    if (expiringItems.isEmpty || _bannerDismissed) {
-      return const SizedBox.shrink();
-    }
-
+  List<SubscriptionItem> get _expiringItems {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final items = _subscriptions.where((item) {
+      final next = DateTime(
+        item.nextDate.year,
+        item.nextDate.month,
+        item.nextDate.day,
+      );
+      final diff = next.difference(today).inDays;
+      return diff >= 0 && diff <= 3;
+    }).toList();
+    items.sort((a, b) => a.nextDate.compareTo(b.nextDate));
+    return items;
+  }
 
-    return SizeTransition(
-      sizeFactor: _bannerAnimation,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF3A1220), Color(0xFF2A1535), Color(0xFF1A1A3E)],
+  int get _monthlyTotal =>
+      _subscriptions.fold<int>(0, (sum, item) => sum + item.price);
+
+  int get _activeAccounts =>
+      _subscriptions.where((item) => item.account.trim().isNotEmpty).length;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showEditDialog(null),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('新增訂閱'),
+      ),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFFF4EFE5),
+              Color(0xFFEFE5D4),
+              Color(0xFFF5F0E8),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            stops: [0.0, 0.5, 1.0],
           ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFFF5252).withOpacity(0.35), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFFF5252).withOpacity(0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
-              child: Row(
-                children: [
-                  AnimatedBuilder(
-                    animation: _pulseAnimation,
-                    builder: (context, child) {
-                      return Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF5252).withOpacity(0.1 + _pulseAnimation.value * 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFF5252).withOpacity(_pulseAnimation.value * 0.2),
-                              blurRadius: 8,
-                            ),
-                          ],
+        child: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: _loadSubscriptions,
+            color: const Color(0xFF0F766E),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 980;
+                final horizontal = wide ? 32.0 : 20.0;
+
+                return CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          horizontal,
+                          24,
+                          horizontal,
+                          16,
                         ),
-                        child: const Icon(Icons.notifications_active_rounded, color: Color(0xFFFF5252), size: 17),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '⚠️ ${expiringItems.length} 個訂閱即將到期',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: Color(0xFFFF8A80),
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  const Spacer(),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => setState(() => _bannerDismissed = true),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        child: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF556677)),
+                        child: wide
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 7,
+                                    child: _buildHero(theme, compact: false),
+                                  ),
+                                  const SizedBox(width: 18),
+                                  Expanded(
+                                    flex: 4,
+                                    child: _buildSidePanel(theme),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                children: [
+                                  _buildHero(theme, compact: true),
+                                  const SizedBox(height: 16),
+                                  _buildSidePanel(theme),
+                                ],
+                              ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(color: Color(0xFF2A2A4E), height: 1, indent: 16, endIndent: 16),
-            const SizedBox(height: 4),
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: min(expiringItems.length * 42.0, 180)),
-              child: ListView.builder(
-                shrinkWrap: true,
-                physics: expiringItems.length > 4
-                    ? const BouncingScrollPhysics()
-                    : const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                itemCount: expiringItems.length,
-                itemBuilder: (context, index) {
-                  final item = expiringItems[index];
-                  final itemDate = DateTime(item.nextDate.year, item.nextDate.month, item.nextDate.day);
-                  final daysLeft = itemDate.difference(today).inDays;
-                  final daysText = daysLeft == 0
-                      ? '今天到期'
-                      : daysLeft == 1
-                          ? '明天到期'
-                          : '$daysLeft 天後到期';
-                  final dateStr =
-                      '${item.nextDate.year}/${item.nextDate.month.toString().padLeft(2, '0')}/${item.nextDate.day.toString().padLeft(2, '0')}';
-
-                  final urgencyColor = daysLeft == 0
-                      ? const Color(0xFFFF5252)
-                      : daysLeft == 1
-                          ? const Color(0xFFFF9800)
-                          : const Color(0xFFFFD740);
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [urgencyColor, urgencyColor.withOpacity(0.3)],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            item.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              color: Colors.white,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                urgencyColor.withOpacity(0.25),
-                                urgencyColor.withOpacity(0.08),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: urgencyColor.withOpacity(0.3)),
-                          ),
-                          child: Text(
-                            daysText,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: urgencyColor,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          dateStr,
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF667788)),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '\$${item.price}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF00E5FF),
-                          ),
-                        ),
-                      ],
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: horizontal),
+                        child: _buildSectionHeader(theme),
+                      ),
                     ),
-                  );
-                },
-              ),
+                    if (_isLoading)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(horizontal, 16, horizontal, 120),
+                          child: const _LoadingList(),
+                        ),
+                      )
+                    else if (_subscriptions.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(horizontal, 16, horizontal, 120),
+                          child: _buildEmptyState(theme),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(horizontal, 16, horizontal, 120),
+                        sliver: SliverList.builder(
+                          itemCount: _subscriptions.length,
+                          itemBuilder: (context, index) {
+                            final item = _subscriptions[index];
+                            return SubscriptionCard(
+                              item: item,
+                              index: index,
+                              onEdit: () => _showEditDialog(item),
+                              onDelete: () => _deleteSubscription(item.id, item.name),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
-            const SizedBox(height: 8),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildShimmerLoading() {
-    return Column(
-      children: [
-        // Shimmer header
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.circular(22),
+  Widget _buildHero(ThemeData theme, {required bool compact}) {
+    return Container(
+      padding: EdgeInsets.all(compact ? 22 : 28),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16332F),
+        borderRadius: BorderRadius.circular(36),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 32,
+            offset: Offset(0, 18),
           ),
-          child: Row(
-            children: List.generate(3, (index) => Expanded(
-              child: Container(
-                margin: EdgeInsets.only(left: index > 0 ? 12 : 0),
-                height: 90,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF16213E),
-                  borderRadius: BorderRadius.circular(16),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Subscription\nCommand Deck',
+                      style: theme.textTheme.displayMedium?.copyWith(
+                        color: const Color(0xFFF7F2E9),
+                        height: 0.98,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      '把週期性付款、提醒與帳號資訊整理成一個乾淨可行動的工作台。',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: const Color(0xFFD4DFDA),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            )),
+              const SizedBox(width: 16),
+              Container(
+                width: 78,
+                height: 78,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF234B46),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_mosaic_rounded,
+                  color: Color(0xFFF8E7B3),
+                  size: 34,
+                ),
+              ),
+            ],
           ),
-        ),
-        // Shimmer cards
-        ...List.generate(5, (index) => Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-          height: 80,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E).withOpacity(0.6),
-            borderRadius: BorderRadius.circular(18),
+          const SizedBox(height: 26),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _StatPanel(
+                label: '活躍訂閱',
+                value: '${_subscriptions.length}',
+                tone: const Color(0xFF78D3C8),
+              ),
+              _StatPanel(
+                label: '月支出',
+                value: '\$$_monthlyTotal',
+                tone: const Color(0xFFF4C970),
+              ),
+              _StatPanel(
+                label: '近期扣款',
+                value: '${_expiringItems.length}',
+                tone: const Color(0xFFF09A7E),
+              ),
+              _StatPanel(
+                label: '有帳號標記',
+                value: '$_activeAccounts',
+                tone: const Color(0xFFAAC5FF),
+              ),
+            ],
           ),
-        )),
+          const SizedBox(height: 24),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: _openOilMonitor,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFE7D5A1),
+                  foregroundColor: const Color(0xFF2F2413),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                icon: const Icon(Icons.oil_barrel_rounded),
+                label: const Text('查看油價監控'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loadSubscriptions,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFF5F0E8),
+                  side: const BorderSide(color: Color(0xFF4B6C67)),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                ),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('重新整理'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidePanel(ThemeData theme) {
+    return Column(
+      children: [
+        _buildExpiringPanel(theme),
+        const SizedBox(height: 16),
+        _buildInsightPanel(theme),
       ],
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
+  Widget _buildExpiringPanel(ThemeData theme) {
+    final items = _expiringItems;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F5EC),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: const Color(0xFFD9CFBF)),
+      ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF7C4DFF).withOpacity(0.1),
-                  const Color(0xFF448AFF).withOpacity(0.05),
-                ],
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.inbox_rounded,
-              size: 56,
-              color: Color(0xFF7C4DFF),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            '尚無訂閱項目',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFFCCDDEE),
-            ),
+          Text(
+            '近期提醒',
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
-          const Text(
-            '點擊右下角按鈕新增第一個訂閱',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF667788),
-            ),
+          Text(
+            items.isEmpty ? '接下來三天沒有即將扣款的項目。' : '優先處理未來三天內的扣款項目。',
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 18),
+          if (items.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3EFE6),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text('目前節奏穩定，暫時沒有急迫項目。'),
+            )
+          else
+            ...items.map((item) {
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              final diff = DateTime(
+                item.nextDate.year,
+                item.nextDate.month,
+                item.nextDate.day,
+              ).difference(today).inDays;
+              final label = diff == 0 ? '今天' : diff == 1 ? '明天' : '$diff 天後';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFBF4),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE8D8C4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFB45309),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${DateFormat('MM/dd').format(item.nextDate)} · $label · \$${item.price}',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightPanel(ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEE3CD),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '管理建議',
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          const _InsightRow(
+            title: '完整記錄帳號',
+            body: '把共用帳號或付款帳號寫進欄位，之後查找與交接會快很多。',
+          ),
+          const SizedBox(height: 12),
+          const _InsightRow(
+            title: '網站連結可直接操作',
+            body: '每筆訂閱放上服務網址後，檢查方案或取消服務時會更順手。',
+          ),
+          const SizedBox(height: 12),
+          const _InsightRow(
+            title: '把高頻支出排前面',
+            body: '近期扣款項目會自然浮出，方便你先處理最需要決策的服務。',
           ),
         ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final expiringCount = _getExpiringItems().length;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D20),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0D20),
-        surfaceTintColor: Colors.transparent,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF7C4DFF), Color(0xFF448AFF)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF7C4DFF).withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.subscriptions_rounded, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'Subscription Manager',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 19,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
+  Widget _buildSectionHeader(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'All Subscriptions',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF1E1B18),
+          ),
         ),
-        actions: [
-          // Expiring badge
-          if (expiringCount > 0)
-            AnimatedBuilder(
-              animation: _pulseAnimation,
-              builder: (context, child) {
-                return Container(
-                  margin: const EdgeInsets.only(right: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF5252).withOpacity(0.1 + _pulseAnimation.value * 0.08),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFFF5252).withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.warning_amber_rounded, size: 14, color: Color(0xFFFF5252)),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$expiringCount',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFFF5252),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          // Total count badge
-          Container(
-            margin: const EdgeInsets.only(right: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF7C4DFF).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF7C4DFF).withOpacity(0.25)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.list_alt, size: 14, color: Color(0xFF7C4DFF)),
-                const SizedBox(width: 4),
-                Text(
-                  '${_subscriptions.length}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF7C4DFF),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+        const SizedBox(height: 6),
+        Text(
+          '清單以可讀性和動作優先，讓你快速查看、修改與清理。',
+          style: theme.textTheme.bodyMedium,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F5EC),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: const Color(0xFFD9CFBF)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '從第一筆訂閱開始建立',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
             ),
           ),
-          // Refresh button
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _isLoading ? null : _loadSubscriptions,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF16213E),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF2A2A4E).withOpacity(0.5)),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 18, height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Color(0xFF7C4DFF),
-                          ),
-                        )
-                      : const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF8899AA)),
-                ),
-              ),
-            ),
+          const SizedBox(height: 10),
+          Text(
+            '新增你常用的串流、雲端或工具服務，之後這裡就會變成你的續費儀表板。',
+            style: theme.textTheme.bodyLarge,
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: PopupMenuButton<String>(
-              tooltip: 'Open menu',
-              color: const Color(0xFF16213E),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-                side: BorderSide(
-                  color: const Color(0xFF2A2A4E).withOpacity(0.7),
-                ),
-              ),
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF16213E),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF2A2A4E).withOpacity(0.5),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.dashboard_customize_rounded,
-                  size: 18,
-                  color: Color(0xFF8899AA),
-                ),
-              ),
-              onSelected: (value) {
-                if (value == 'oil_monitor') {
-                  _openOilMonitor();
-                }
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem<String>(
-                  enabled: false,
-                  value: 'subscription',
-                  child: Row(
-                    children: [
-                      Icon(Icons.subscriptions_rounded, size: 18, color: Colors.white70),
-                      SizedBox(width: 10),
-                      Text('訂閱管理', style: TextStyle(color: Colors.white70)),
-                    ],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'oil_monitor',
-                  child: Row(
-                    children: [
-                      Icon(Icons.oil_barrel_rounded, size: 18, color: Color(0xFF80DEEA)),
-                      SizedBox(width: 10),
-                      Text('石油監控'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: () => _showEditDialog(null),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('建立第一筆訂閱'),
           ),
-          const SizedBox(width: 8),
         ],
       ),
-      body: _isLoading
-          ? _buildShimmerLoading()
-          : _subscriptions.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadSubscriptions,
-                  color: const Color(0xFF7C4DFF),
-                  backgroundColor: const Color(0xFF1A1A2E),
-                  child: CustomScrollView(
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
-                    ),
-                    slivers: [
-                      SliverToBoxAdapter(child: _buildSummaryHeader()),
-                      SliverToBoxAdapter(child: _buildExpiringBanner()),
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 18,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF7C4DFF), Color(0xFF448AFF)],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                '所有訂閱',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFFCCDDEE),
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      const Color(0xFF7C4DFF).withOpacity(0.15),
-                                      const Color(0xFF7C4DFF).withOpacity(0.05),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: const Color(0xFF7C4DFF).withOpacity(0.2),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.sort_rounded, size: 12,
-                                        color: const Color(0xFF7C4DFF).withOpacity(0.7)),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '按日期排序（近→遠）',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: const Color(0xFF7C4DFF).withOpacity(0.7),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      SliverPadding(
-                        padding: const EdgeInsets.only(bottom: 90),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final item = _subscriptions[index];
-                              return SubscriptionCard(
-                                item: item,
-                                index: index,
-                                onEdit: () => _showEditDialog(item),
-                                onDelete: () => _deleteSubscription(item.id),
-                              );
-                            },
-                            childCount: _subscriptions.length,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+    );
+  }
+}
+
+class _StatPanel extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color tone;
+
+  const _StatPanel({
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 148,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFFC8D7D2),
                 ),
-      floatingActionButton: ScaleTransition(
-        scale: _fabAnimation,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF7C4DFF).withOpacity(0.4),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: tone,
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InsightRow extends StatelessWidget {
+  final String title;
+  final String body;
+
+  const _InsightRow({
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          margin: const EdgeInsets.only(top: 6),
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F766E),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
               ),
-              BoxShadow(
-                color: const Color(0xFF448AFF).withOpacity(0.2),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
+              const SizedBox(height: 4),
+              Text(body),
             ],
           ),
-          child: FloatingActionButton(
-            onPressed: () => _showEditDialog(null),
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            child: Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF7C4DFF), Color(0xFF448AFF)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Icon(Icons.add_rounded, size: 30, color: Colors.white),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoadingList extends StatelessWidget {
+  const _LoadingList();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(
+        4,
+        (_) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Container(
+            height: 160,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9F5EC),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0xFFD9CFBF)),
             ),
           ),
         ),
