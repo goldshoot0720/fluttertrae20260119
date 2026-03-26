@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../../data/model/subscription_item.dart';
 
 class SubscriptionDialog extends StatefulWidget {
   final SubscriptionItem? item;
   final Function(SubscriptionItem) onSave;
 
-  const SubscriptionDialog({Key? key, this.item, required this.onSave}) : super(key: key);
+  const SubscriptionDialog({
+    super.key,
+    this.item,
+    required this.onSave,
+  });
 
   @override
   State<SubscriptionDialog> createState() => _SubscriptionDialogState();
@@ -26,7 +31,9 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     super.initState();
     _nameController = TextEditingController(text: widget.item?.name ?? '');
     _siteController = TextEditingController(text: widget.item?.site ?? '');
-    _priceController = TextEditingController(text: widget.item?.price.toString() ?? '');
+    _priceController = TextEditingController(
+      text: widget.item == null ? '' : widget.item!.price.toString(),
+    );
     _noteController = TextEditingController(text: widget.item?.note ?? '');
     _accountController = TextEditingController(text: widget.item?.account ?? '');
     _nextDate = widget.item?.nextDate ?? DateTime.now();
@@ -45,11 +52,11 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.item != null;
-    
+
     return Dialog(
       backgroundColor: const Color(0xFF1A1A2E),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Container(
+      child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
         child: SingleChildScrollView(
           child: Padding(
@@ -60,7 +67,6 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
                   Row(
                     children: [
                       Container(
@@ -89,22 +95,19 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                     ],
                   ),
                   const SizedBox(height: 24),
-
-                  // Name field
                   _buildLabel('名稱', Icons.label_rounded),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _nameController,
                     style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
-                      hintText: '輸入訂閱名稱',
+                      hintText: '例如 Netflix、Spotify',
                       hintStyle: TextStyle(color: Color(0xFF556677)),
                     ),
-                    validator: (value) => value!.isEmpty ? '必填欄位' : null,
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty) ? '此欄位必填' : null,
                   ),
                   const SizedBox(height: 16),
-
-                  // Site URL field
                   _buildLabel('網站 URL', Icons.link_rounded),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -116,8 +119,6 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Price and Account row
                   Row(
                     children: [
                       Expanded(
@@ -133,10 +134,14 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                                 hintText: '0',
                                 hintStyle: TextStyle(color: Color(0xFF556677)),
                                 prefixText: '\$ ',
-                                prefixStyle: TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
+                                prefixStyle: TextStyle(
+                                  color: Color(0xFF00E5FF),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               keyboardType: TextInputType.number,
-                              validator: (value) => value!.isEmpty ? '必填欄位' : null,
+                              validator: (value) =>
+                                  (value == null || value.trim().isEmpty) ? '此欄位必填' : null,
                             ),
                           ],
                         ),
@@ -152,7 +157,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               controller: _accountController,
                               style: const TextStyle(color: Colors.white),
                               decoration: const InputDecoration(
-                                hintText: '帳號名稱',
+                                hintText: '可填登入帳號或方案名稱',
                                 hintStyle: TextStyle(color: Color(0xFF556677)),
                               ),
                             ),
@@ -162,23 +167,19 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  // Note field
                   _buildLabel('備註', Icons.note_rounded),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _noteController,
                     style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
-                      hintText: '輸入備註...',
+                      hintText: '例如家庭方案、年繳折扣、提醒事項',
                       hintStyle: TextStyle(color: Color(0xFF556677)),
                     ),
                     maxLines: 3,
                   ),
                   const SizedBox(height: 16),
-
-                  // Date picker
-                  _buildLabel('下次付款日', Icons.calendar_today_rounded),
+                  _buildLabel('下次扣款日', Icons.calendar_today_rounded),
                   const SizedBox(height: 6),
                   InkWell(
                     onTap: () async {
@@ -233,8 +234,6 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                     ),
                   ),
                   const SizedBox(height: 28),
-
-                  // Action buttons
                   Row(
                     children: [
                       Expanded(
@@ -278,12 +277,12 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
                               if (_formKey.currentState!.validate()) {
                                 final newItem = SubscriptionItem(
                                   id: widget.item?.id ?? '',
-                                  name: _nameController.text,
-                                  site: _siteController.text,
-                                  price: int.tryParse(_priceController.text) ?? 0,
+                                  name: _nameController.text.trim(),
+                                  site: _siteController.text.trim(),
+                                  price: int.tryParse(_priceController.text.trim()) ?? 0,
                                   nextDate: _nextDate,
-                                  note: _noteController.text,
-                                  account: _accountController.text,
+                                  note: _noteController.text.trim(),
+                                  account: _accountController.text.trim(),
                                 );
                                 widget.onSave(newItem);
                               }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../data/model/subscription_item.dart';
 
 class SubscriptionCard extends StatefulWidget {
@@ -10,12 +11,12 @@ class SubscriptionCard extends StatefulWidget {
   final int index;
 
   const SubscriptionCard({
-    Key? key,
+    super.key,
     required this.item,
     this.onEdit,
     this.onDelete,
     this.index = 0,
-  }) : super(key: key);
+  });
 
   @override
   State<SubscriptionCard> createState() => _SubscriptionCardState();
@@ -45,7 +46,9 @@ class _SubscriptionCardState extends State<SubscriptionCard>
     ).animate(_entranceAnimation);
 
     Future.delayed(Duration(milliseconds: 60 * widget.index), () {
-      if (mounted) _entranceController.forward();
+      if (mounted) {
+        _entranceController.forward();
+      }
     });
   }
 
@@ -85,10 +88,10 @@ class _SubscriptionCardState extends State<SubscriptionCard>
 
   String get _daysLabel {
     final days = _daysUntilExpiry;
-    if (days < 0) return '已過期';
+    if (days < 0) return '已逾期';
     if (days == 0) return '今天';
     if (days == 1) return '明天';
-    return '$days 天';
+    return '$days 天後';
   }
 
   IconData get _urgencyIcon {
@@ -103,8 +106,7 @@ class _SubscriptionCardState extends State<SubscriptionCard>
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy/MM/dd');
-    final currencyFormat =
-        NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    final currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
     return SlideTransition(
       position: _slideAnimation,
@@ -123,12 +125,8 @@ class _SubscriptionCardState extends State<SubscriptionCard>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  _isHovered
-                      ? _cardGradientStart.withOpacity(0.95)
-                      : _cardGradientStart,
-                  _isHovered
-                      ? const Color(0xFF1C1C3A)
-                      : const Color(0xFF161630),
+                  _isHovered ? _cardGradientStart.withOpacity(0.95) : _cardGradientStart,
+                  _isHovered ? const Color(0xFF1C1C3A) : const Color(0xFF161630),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -166,39 +164,31 @@ class _SubscriptionCardState extends State<SubscriptionCard>
               child: IntrinsicHeight(
                 child: Row(
                   children: [
-                    // Left urgency strip with gradient
                     Container(
                       width: 5,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            _urgencyColor,
-                            _urgencyColor.withOpacity(0.4),
-                          ],
+                          colors: [_urgencyColor, _urgencyColor.withOpacity(0.4)],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                         ),
                       ),
                     ),
-                    // Card content
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.all(14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Row 1: Name, price, urgency badge
                             Row(
                               children: [
-                                // Urgency icon
                                 Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
                                     color: _urgencyColor.withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  child: Icon(_urgencyIcon,
-                                      color: _urgencyColor, size: 16),
+                                  child: Icon(_urgencyIcon, color: _urgencyColor, size: 16),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -214,10 +204,8 @@ class _SubscriptionCardState extends State<SubscriptionCard>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                // Urgency badge
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
@@ -226,8 +214,7 @@ class _SubscriptionCardState extends State<SubscriptionCard>
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                        color: _urgencyColor.withOpacity(0.35)),
+                                    border: Border.all(color: _urgencyColor.withOpacity(0.35)),
                                   ),
                                   child: Text(
                                     _daysLabel,
@@ -240,23 +227,18 @@ class _SubscriptionCardState extends State<SubscriptionCard>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                // Price
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 5),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
-                                        const Color(0xFF00E5FF)
-                                            .withOpacity(0.15),
-                                        const Color(0xFF448AFF)
-                                            .withOpacity(0.1),
+                                        const Color(0xFF00E5FF).withOpacity(0.15),
+                                        const Color(0xFF448AFF).withOpacity(0.1),
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: const Color(0xFF00E5FF)
-                                          .withOpacity(0.2),
+                                      color: const Color(0xFF00E5FF).withOpacity(0.2),
                                     ),
                                   ),
                                   child: Text(
@@ -271,17 +253,18 @@ class _SubscriptionCardState extends State<SubscriptionCard>
                               ],
                             ),
                             const SizedBox(height: 10),
-                            // Row 2: Date, account, actions
                             Row(
                               children: [
-                                Icon(Icons.calendar_today_rounded,
-                                    size: 13,
-                                    color: _urgencyColor.withOpacity(0.6)),
+                                Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 13,
+                                  color: _urgencyColor.withOpacity(0.6),
+                                ),
                                 const SizedBox(width: 5),
                                 Text(
                                   dateFormat.format(widget.item.nextDate),
-                                  style: TextStyle(
-                                    color: const Color(0xFF8899AA),
+                                  style: const TextStyle(
+                                    color: Color(0xFF8899AA),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -289,30 +272,27 @@ class _SubscriptionCardState extends State<SubscriptionCard>
                                 if (widget.item.account.isNotEmpty) ...[
                                   const SizedBox(width: 12),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: [
-                                          const Color(0xFF7C4DFF)
-                                              .withOpacity(0.15),
-                                          const Color(0xFF7C4DFF)
-                                              .withOpacity(0.05),
+                                          const Color(0xFF7C4DFF).withOpacity(0.15),
+                                          const Color(0xFF7C4DFF).withOpacity(0.05),
                                         ],
                                       ),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                        color: const Color(0xFF7C4DFF)
-                                            .withOpacity(0.2),
+                                        color: const Color(0xFF7C4DFF).withOpacity(0.2),
                                       ),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Icon(
-                                            Icons.person_outline_rounded,
-                                            size: 11,
-                                            color: Color(0xFF9E8CFF)),
+                                          Icons.person_outline_rounded,
+                                          size: 11,
+                                          color: Color(0xFF9E8CFF),
+                                        ),
                                         const SizedBox(width: 3),
                                         Text(
                                           widget.item.account,
@@ -327,7 +307,6 @@ class _SubscriptionCardState extends State<SubscriptionCard>
                                   ),
                                 ],
                                 const Spacer(),
-                                // Action buttons
                                 if (widget.item.site.isNotEmpty)
                                   _buildActionButton(
                                     icon: Icons.open_in_new_rounded,
@@ -353,19 +332,16 @@ class _SubscriptionCardState extends State<SubscriptionCard>
                                 ),
                               ],
                             ),
-                            // Row 3: Note
                             if (widget.item.note.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color:
-                                      const Color(0xFF16213E).withOpacity(0.6),
+                                  color: const Color(0xFF16213E).withOpacity(0.6),
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                    color: const Color(0xFF2A2A4E)
-                                        .withOpacity(0.4),
+                                    color: const Color(0xFF2A2A4E).withOpacity(0.4),
                                   ),
                                 ),
                                 child: Row(
@@ -421,9 +397,7 @@ class _SubscriptionCardState extends State<SubscriptionCard>
           decoration: BoxDecoration(
             color: color.withOpacity(_isHovered ? 0.15 : 0.08),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: color.withOpacity(_isHovered ? 0.3 : 0.1),
-            ),
+            border: Border.all(color: color.withOpacity(_isHovered ? 0.3 : 0.1)),
           ),
           child: Icon(icon, size: 15, color: color),
         ),
