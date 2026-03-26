@@ -10,14 +10,17 @@ class AppwriteService {
   static const String subscriptionCollectionName = 'subscription';
 
   late Client client;
+  late Account account;
   late Databases databases;
   final Completer<void> _initCompleter = Completer<void>();
+  Future<void>? _sessionFuture;
   final Map<String, Future<String>> _collectionIdFutures = {};
 
   AppwriteService() {
     client = Client()
         .setEndpoint(AppwriteConfig.endpoint)
         .setProject(AppwriteConfig.projectId);
+    account = Account(client);
     databases = Databases(client);
     _waitAndOverrideUserAgent();
   }
@@ -27,11 +30,40 @@ class AppwriteService {
     while (!(client as dynamic).initialized) {
       await Future.delayed(const Duration(milliseconds: 10));
     }
-    client.addHeader('user-agent', 'SubscriptionManager/1.0.0');
+    client.addHeader('user-agent', 'SubscriptionManager/1.0.2');
     _initCompleter.complete();
   }
 
   Future<void> _ensureInit() => _initCompleter.future;
+
+  Future<void> _ensureSession() {
+    return _sessionFuture ??= _createAnonymousSessionIfNeeded();
+  }
+
+  Future<void> _createAnonymousSessionIfNeeded() async {
+    await _ensureInit();
+
+    try {
+      await account.get();
+      return;
+    } on AppwriteException catch (e) {
+      if (e.code != 401) {
+        rethrow;
+      }
+    }
+
+    try {
+      await account.createAnonymousSession();
+    } on AppwriteException catch (e) {
+      final message = (e.message ?? '').toLowerCase();
+      final hasActiveSession =
+          e.code == 409 ||
+          (message.contains('session') && message.contains('active'));
+      if (!hasActiveSession) {
+        rethrow;
+      }
+    }
+  }
 
   Future<String> _getSubscriptionCollectionId() {
     return _getSubscriptionCollectionIdWithFallback();
@@ -122,7 +154,7 @@ class AppwriteService {
   }
 
   Future<List<SubscriptionItem>> getSubscriptions() async {
-    await _ensureInit();
+    await _ensureSession();
     try {
       return await _withSubscriptionCollection((collectionId) async {
         final allSubscriptions = <SubscriptionItem>[];
@@ -174,7 +206,7 @@ class AppwriteService {
   }
 
   Future<void> addSubscription(SubscriptionItem item) async {
-    await _ensureInit();
+    await _ensureSession();
     try {
       await _withSubscriptionCollection((collectionId) {
         return databases.createDocument(
@@ -191,7 +223,7 @@ class AppwriteService {
   }
 
   Future<void> updateSubscription(SubscriptionItem item) async {
-    await _ensureInit();
+    await _ensureSession();
     if (item.id.trim().isEmpty) {
       throw ArgumentError(
         'Cannot update subscription without a document id.',
@@ -213,7 +245,7 @@ class AppwriteService {
   }
 
   Future<void> deleteSubscription(String id) async {
-    await _ensureInit();
+    await _ensureSession();
     if (id.trim().isEmpty) {
       throw ArgumentError(
         'Cannot delete subscription without a document id.',
