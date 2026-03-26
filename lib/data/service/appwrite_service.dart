@@ -30,7 +30,7 @@ class AppwriteService {
     while (!(client as dynamic).initialized) {
       await Future.delayed(const Duration(milliseconds: 10));
     }
-    client.addHeader('user-agent', 'SubscriptionManager/1.0.2');
+    client.addHeader('user-agent', 'SubscriptionManager/1.0.3');
     _initCompleter.complete();
   }
 
