@@ -19,23 +19,23 @@ class SubscriptionDialog extends StatefulWidget {
 
 class _SubscriptionDialogState extends State<SubscriptionDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameController;
-  late final TextEditingController _siteController;
-  late final TextEditingController _priceController;
-  late final TextEditingController _noteController;
-  late final TextEditingController _accountController;
-  late DateTime _nextDate;
+  late TextEditingController _nameController;
+  late TextEditingController _siteController;
+  late TextEditingController _priceController;
+  late TextEditingController _noteController;
+  late TextEditingController _accountController;
+  DateTime _nextDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.item?.name ?? '');
     _siteController = TextEditingController(text: widget.item?.site ?? '');
-    _priceController =
-        TextEditingController(text: widget.item?.price.toString() ?? '');
+    _priceController = TextEditingController(
+      text: widget.item == null ? '' : widget.item!.price.toString(),
+    );
     _noteController = TextEditingController(text: widget.item?.note ?? '');
-    _accountController =
-        TextEditingController(text: widget.item?.account ?? '');
+    _accountController = TextEditingController(text: widget.item?.account ?? '');
     _nextDate = widget.item?.nextDate ?? DateTime.now();
   }
 
@@ -49,249 +49,289 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
     super.dispose();
   }
 
-  Future<void> _pickDate() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _nextDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: const Color(0xFF0F766E),
-                  surface: const Color(0xFFF9F5EC),
-                ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (date != null) {
-      setState(() => _nextDate = date);
-    }
-  }
-
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-
-    widget.onSave(
-      SubscriptionItem(
-        id: widget.item?.id ?? '',
-        name: _nameController.text.trim(),
-        site: _siteController.text.trim(),
-        price: int.tryParse(_priceController.text.trim()) ?? 0,
-        nextDate: _nextDate,
-        note: _noteController.text.trim(),
-        account: _accountController.text.trim(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.item != null;
-    final theme = Theme.of(context);
 
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      backgroundColor: const Color(0xFF1A1A2E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
+        constraints: const BoxConstraints(maxWidth: 440),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(28),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE1EFEB),
-                    borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF7C4DFF), Color(0xFF448AFF)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          isEditing ? Icons.edit_rounded : Icons.add_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        isEditing ? '編輯訂閱' : '新增訂閱',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Icon(
-                    isEditing ? Icons.tune_rounded : Icons.add_rounded,
-                    size: 30,
-                    color: const Color(0xFF0F766E),
+                  const SizedBox(height: 24),
+                  _buildLabel('名稱', Icons.label_rounded),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _nameController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      hintText: '例如 Netflix、Spotify',
+                      hintStyle: TextStyle(color: Color(0xFF556677)),
+                    ),
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty) ? '此欄位必填' : null,
                   ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  isEditing ? '編輯訂閱項目' : '新增訂閱項目',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1E1B18),
+                  const SizedBox(height: 16),
+                  _buildLabel('網站 URL', Icons.link_rounded),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _siteController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      hintText: 'https://example.com',
+                      hintStyle: TextStyle(color: Color(0xFF556677)),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '把帳號、扣款日與備註整理在同一處，之後提醒會更準。',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 24),
-                _FieldLabel('服務名稱'),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _nameController,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    hintText: '例如 Netflix、Spotify、iCloud+',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return '請輸入服務名稱';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 18),
-                _FieldLabel('網站連結'),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _siteController,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    hintText: 'https://example.com',
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _FieldLabel('價格'),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _priceController,
-                            keyboardType: TextInputType.number,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              hintText: '0',
-                              prefixText: '\$ ',
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('金額', Icons.payments_rounded),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _priceController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                hintText: '0',
+                                hintStyle: TextStyle(color: Color(0xFF556677)),
+                                prefixText: '\$ ',
+                                prefixStyle: TextStyle(
+                                  color: Color(0xFF00E5FF),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (value) =>
+                                  (value == null || value.trim().isEmpty) ? '此欄位必填' : null,
                             ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return '請輸入價格';
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('帳號', Icons.person_outline_rounded),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _accountController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                hintText: '可填登入帳號或方案名稱',
+                                hintStyle: TextStyle(color: Color(0xFF556677)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildLabel('備註', Icons.note_rounded),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _noteController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      hintText: '例如家庭方案、年繳折扣、提醒事項',
+                      hintStyle: TextStyle(color: Color(0xFF556677)),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildLabel('下次扣款日', Icons.calendar_today_rounded),
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _nextDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: const ColorScheme.dark(
+                                primary: Color(0xFF7C4DFF),
+                                onPrimary: Colors.white,
+                                surface: Color(0xFF1A1A2E),
+                                onSurface: Colors.white,
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (date != null) {
+                        setState(() => _nextDate = date);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16213E),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF2A2A4E)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.event_rounded, size: 18, color: Color(0xFF7C4DFF)),
+                          const SizedBox(width: 10),
+                          Text(
+                            DateFormat('yyyy / MM / dd').format(_nextDate),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF8899AA)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: const BorderSide(color: Color(0xFF2A2A4E)),
+                            ),
+                          ),
+                          child: const Text(
+                            '取消',
+                            style: TextStyle(
+                              color: Color(0xFF8899AA),
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF7C4DFF), Color(0xFF448AFF)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF7C4DFF).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                final newItem = SubscriptionItem(
+                                  id: widget.item?.id ?? '',
+                                  name: _nameController.text.trim(),
+                                  site: _siteController.text.trim(),
+                                  price: int.tryParse(_priceController.text.trim()) ?? 0,
+                                  nextDate: _nextDate,
+                                  note: _noteController.text.trim(),
+                                  account: _accountController.text.trim(),
+                                );
+                                widget.onSave(newItem);
                               }
-                              return null;
                             },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _FieldLabel('帳號'),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _accountController,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              hintText: '例如 main@email.com',
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                _FieldLabel('備註'),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _noteController,
-                  textInputAction: TextInputAction.newline,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: '例如家庭方案、年繳改月繳、共用成員資訊',
-                  ),
-                ),
-                const SizedBox(height: 18),
-                _FieldLabel('下次扣款日'),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: _pickDate,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Ink(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFCF6),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFD8CDBE)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.event_outlined,
-                          color: Color(0xFF0F766E),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            DateFormat('yyyy.MM.dd').format(_nextDate),
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
+                            child: Text(
+                              isEditing ? '儲存變更' : '新增訂閱',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
-                        const Icon(Icons.keyboard_arrow_down_rounded),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 28),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('取消'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: _submit,
-                        child: Text(isEditing ? '儲存變更' : '建立項目'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
-}
 
-class _FieldLabel extends StatelessWidget {
-  final String text;
-
-  const _FieldLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: const Color(0xFF62584F),
-            fontWeight: FontWeight.w700,
+  Widget _buildLabel(String text, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: const Color(0xFF7C4DFF)),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF8899AA),
+            letterSpacing: 0.5,
           ),
+        ),
+      ],
     );
   }
 }
