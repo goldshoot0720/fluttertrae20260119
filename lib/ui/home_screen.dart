@@ -6,6 +6,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../data/model/subscription_item.dart';
 import '../data/service/appwrite_service.dart';
+import 'oil_price_screen.dart';
 import 'us_debt_screen.dart';
 import 'widgets/subscription_card.dart';
 import 'widgets/subscription_dialog.dart';
@@ -111,6 +112,12 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
   Future<void> _openUsDebt() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const USDebtScreen()),
+    );
+  }
+
+  Future<void> _openOilPrice() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const OilPriceScreen()),
     );
   }
 
@@ -307,6 +314,11 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
+                    FilledButton.icon(
+                      onPressed: _openOilPrice,
+                      icon: const Icon(Icons.oil_barrel_rounded),
+                      label: const Text('Oil Price'),
+                    ),
                     FilledButton.icon(
                       onPressed: _openUsDebt,
                       icon: const Icon(Icons.account_balance_rounded),
