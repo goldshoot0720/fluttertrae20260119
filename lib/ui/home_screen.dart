@@ -6,6 +6,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../data/model/subscription_item.dart';
 import '../data/service/appwrite_service.dart';
+import 'absurd_marriage_reason_screen.dart';
 import 'oil_price_screen.dart';
 import 'us_debt_screen.dart';
 import 'widgets/subscription_card.dart';
@@ -118,6 +119,12 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
   Future<void> _openOilPrice() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const OilPriceScreen()),
+    );
+  }
+
+  Future<void> _openAbsurdMarriageReason() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AbsurdMarriageReasonScreen()),
     );
   }
 
@@ -314,6 +321,11 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
+                    FilledButton.icon(
+                      onPressed: _openAbsurdMarriageReason,
+                      icon: const Icon(Icons.casino_rounded),
+                      label: const Text('最瞎結婚理由'),
+                    ),
                     FilledButton.icon(
                       onPressed: _openOilPrice,
                       icon: const Icon(Icons.oil_barrel_rounded),
