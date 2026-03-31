@@ -26,6 +26,7 @@ class LotteryDraw {
   final int? specialNumber;
   final int? sellAmount;
   final int? totalAmount;
+  final Map<String, int> prizePayouts;
 
   const LotteryDraw({
     required this.gameType,
@@ -37,6 +38,7 @@ class LotteryDraw {
     required this.specialNumber,
     required this.sellAmount,
     required this.totalAmount,
+    required this.prizePayouts,
   });
 }
 
@@ -81,5 +83,25 @@ class LotteryDashboardData {
   const LotteryDashboardData({
     required this.fetchedAt,
     required this.sections,
+  });
+}
+
+class LotteryFinancialSummary {
+  final int drawCount;
+  final int ticketCount;
+  final int costPerTicket;
+  final int totalCost;
+  final int totalPayout;
+  final int netProfit;
+  final int winningTickets;
+
+  const LotteryFinancialSummary({
+    required this.drawCount,
+    required this.ticketCount,
+    required this.costPerTicket,
+    required this.totalCost,
+    required this.totalPayout,
+    required this.netProfit,
+    required this.winningTickets,
   });
 }

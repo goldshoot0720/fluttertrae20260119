@@ -135,6 +135,72 @@ class TaiwanLotteryService {
     }).toList();
   }
 
+  int costPerTicket(LotteryGameType gameType) {
+    switch (gameType) {
+      case LotteryGameType.superLotto638:
+        return 100;
+      case LotteryGameType.lotto649:
+        return 50;
+      case LotteryGameType.daily539:
+        return 50;
+    }
+  }
+
+  LotteryFinancialSummary summarizeSection(LotteryGameSection section) {
+    final ticketCost = costPerTicket(section.gameType);
+    final totalCost = section.draws.length * section.tickets.length * ticketCost;
+    var totalPayout = 0;
+    var winningTickets = 0;
+
+    for (final draw in section.draws) {
+      final matches = compareTickets(draw, section.tickets);
+      for (final match in matches) {
+        final payout = draw.prizePayouts[match.prizeLabel] ?? 0;
+        totalPayout += payout;
+        if (payout > 0) {
+          winningTickets += 1;
+        }
+      }
+    }
+
+    return LotteryFinancialSummary(
+      drawCount: section.draws.length,
+      ticketCount: section.tickets.length,
+      costPerTicket: ticketCost,
+      totalCost: totalCost,
+      totalPayout: totalPayout,
+      netProfit: totalPayout - totalCost,
+      winningTickets: winningTickets,
+    );
+  }
+
+  LotteryFinancialSummary summarizeDashboard(LotteryDashboardData data) {
+    var totalCost = 0;
+    var totalPayout = 0;
+    var drawCount = 0;
+    var ticketCount = 0;
+    var winningTickets = 0;
+
+    for (final section in data.sections) {
+      final summary = summarizeSection(section);
+      totalCost += summary.totalCost;
+      totalPayout += summary.totalPayout;
+      drawCount += summary.drawCount;
+      ticketCount += summary.ticketCount;
+      winningTickets += summary.winningTickets;
+    }
+
+    return LotteryFinancialSummary(
+      drawCount: drawCount,
+      ticketCount: ticketCount,
+      costPerTicket: 0,
+      totalCost: totalCost,
+      totalPayout: totalPayout,
+      netProfit: totalPayout - totalCost,
+      winningTickets: winningTickets,
+    );
+  }
+
   Future<List<LotteryDraw>> _fetchDraws({
     required String endpoint,
     required String listKey,
@@ -209,7 +275,54 @@ class TaiwanLotteryService {
       specialNumber: specialNumber,
       sellAmount: (json['sellAmount'] as num?)?.toInt(),
       totalAmount: (json['totalAmount'] as num?)?.toInt(),
+      prizePayouts: _extractPrizePayouts(json, gameType),
     );
+  }
+
+  Map<String, int> _extractPrizePayouts(
+    Map<String, dynamic> json,
+    LotteryGameType gameType,
+  ) {
+    switch (gameType) {
+      case LotteryGameType.superLotto638:
+        return {
+          '頭獎': _readPerPrize(json['super638JackpotAssign']),
+          '貳獎': _readPerPrize(json['super638SecondAssign']),
+          '參獎': _readPerPrize(json['super638ThirdAssign']),
+          '肆獎': _readPerPrize(json['super638FourthAssign']),
+          '伍獎': _readPerPrize(json['super638FifthAssign']),
+          '陸獎': _readPerPrize(json['super638SixthAssign']),
+          '柒獎': _readPerPrize(json['super638SeventhAssign']),
+          '捌獎': _readPerPrize(json['super638EighthAssign']),
+          '玖獎': _readPerPrize(json['super638NinthAssign']),
+          '普獎': _readPerPrize(json['super638NormalAssign']),
+        };
+      case LotteryGameType.lotto649:
+        return {
+          '頭獎': _readPerPrize(json['jackpotAssign']),
+          '貳獎': _readPerPrize(json['secondAssign']),
+          '參獎': _readPerPrize(json['thirdAssign']),
+          '肆獎': _readPerPrize(json['fourthAssign']),
+          '伍獎': _readPerPrize(json['fifthAssign']),
+          '陸獎': _readPerPrize(json['sixthAssign']),
+          '柒獎': _readPerPrize(json['seventhAssign']),
+          '普獎': _readPerPrize(json['normalAssign']),
+        };
+      case LotteryGameType.daily539:
+        return {
+          '頭獎': _readPerPrize(json['d539JackpotAssign']),
+          '貳獎': _readPerPrize(json['d539SecondAssign']),
+          '參獎': _readPerPrize(json['d539ThirdAssign']),
+          '肆獎': _readPerPrize(json['d539FourthAssign']),
+        };
+    }
+  }
+
+  int _readPerPrize(dynamic rawAssign) {
+    if (rawAssign is! Map<String, dynamic>) {
+      return 0;
+    }
+    return (rawAssign['perPrize'] as num?)?.toInt() ?? 0;
   }
 
   Future<Map<String, dynamic>> _getJson(

@@ -125,6 +125,7 @@ class _AbsurdMarriageReasonScreenState
           (sum, section) => sum + section.draws.length,
         ) ??
         0;
+    final overallSummary = _data == null ? null : _service.summarizeDashboard(_data!);
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -171,6 +172,24 @@ class _AbsurdMarriageReasonScreenState
                 icon: Icons.schedule_rounded,
                 label: '最後更新 $fetchedAt',
               ),
+              if (overallSummary != null)
+                _InfoPill(
+                  icon: Icons.payments_rounded,
+                  label: '總投入 ${_formatCurrency(overallSummary.totalCost)}',
+                ),
+              if (overallSummary != null)
+                _InfoPill(
+                  icon: Icons.savings_rounded,
+                  label: '總獎金 ${_formatCurrency(overallSummary.totalPayout)}',
+                ),
+              if (overallSummary != null)
+                _InfoPill(
+                  icon: overallSummary.netProfit >= 0
+                      ? Icons.trending_up_rounded
+                      : Icons.trending_down_rounded,
+                  label:
+                      '淨收益 ${_formatSignedCurrency(overallSummary.netProfit)}',
+                ),
             ],
           ),
         ],
@@ -210,6 +229,7 @@ class _AbsurdMarriageReasonScreenState
         .expand((draw) => _service.compareTickets(draw, section.tickets))
         .where((match) => match.isWinning)
         .length;
+    final summary = _service.summarizeSection(section);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
@@ -266,6 +286,8 @@ class _AbsurdMarriageReasonScreenState
                     .map((ticket) => _TicketDefinitionChip(ticket: ticket))
                     .toList(),
               ),
+              const SizedBox(height: 14),
+              _FinanceStrip(summary: summary),
               const SizedBox(height: 16),
               ...section.draws.map((draw) => _buildDrawCard(section, draw)),
             ],
@@ -542,3 +564,112 @@ class _MatchRow extends StatelessWidget {
 }
 
 String _formatNumber(int number) => number.toString().padLeft(2, '0');
+
+String _formatCurrency(int amount) {
+  final formatter = NumberFormat.currency(
+    locale: 'zh_TW',
+    symbol: r'$',
+    decimalDigits: 0,
+  );
+  return formatter.format(amount);
+}
+
+String _formatSignedCurrency(int amount) {
+  final sign = amount > 0 ? '+' : '';
+  return '$sign${_formatCurrency(amount)}';
+}
+
+class _FinanceStrip extends StatelessWidget {
+  final LotteryFinancialSummary summary;
+
+  const _FinanceStrip({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    final netColor = summary.netProfit >= 0
+        ? const Color(0xFF0F766E)
+        : const Color(0xFF9A3412);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F1E4),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE4D4B8)),
+      ),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          _FinancePill(
+            label: '每注成本',
+            value: _formatCurrency(summary.costPerTicket),
+          ),
+          _FinancePill(
+            label: '總投入',
+            value: _formatCurrency(summary.totalCost),
+          ),
+          _FinancePill(
+            label: '總獎金',
+            value: _formatCurrency(summary.totalPayout),
+          ),
+          _FinancePill(
+            label: '淨收益',
+            value: _formatSignedCurrency(summary.netProfit),
+            valueColor: netColor,
+          ),
+          _FinancePill(
+            label: '中獎張數',
+            value: '${summary.winningTickets}',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FinancePill extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _FinancePill({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF7A7064),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              color: valueColor ?? const Color(0xFF1F1A15),
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
