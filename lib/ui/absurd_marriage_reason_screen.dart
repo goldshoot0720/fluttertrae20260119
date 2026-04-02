@@ -14,7 +14,9 @@ class AbsurdMarriageReasonScreen extends StatefulWidget {
 }
 
 class _AbsurdMarriageReasonScreenState
-    extends State<AbsurdMarriageReasonScreen> {
+    extends State<AbsurdMarriageReasonScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _easterEggController;
   final TaiwanLotteryService _service = TaiwanLotteryService();
 
   LotteryDashboardData? _data;
@@ -25,7 +27,25 @@ class _AbsurdMarriageReasonScreenState
   @override
   void initState() {
     super.initState();
+    _easterEggController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    );
+    if (_isBirthdayEasterEgg) {
+      _easterEggController.repeat();
+    }
     _load();
+  }
+
+  @override
+  void dispose() {
+    _easterEggController.dispose();
+    super.dispose();
+  }
+
+  bool get _isBirthdayEasterEgg {
+    final now = DateTime.now();
+    return now.month == 4 && now.day == 3;
   }
 
   Future<void> _load({bool refresh = false}) async {
@@ -95,14 +115,21 @@ class _AbsurdMarriageReasonScreenState
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+      body: Stack(
+        children: [
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator())
+          else
+            RefreshIndicator(
               onRefresh: _refresh,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
+                  if (_isBirthdayEasterEgg) ...[
+                    _buildBirthdayBanner(),
+                    const SizedBox(height: 16),
+                  ],
                   _buildHeroCard(),
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 16),
@@ -113,9 +140,120 @@ class _AbsurdMarriageReasonScreenState
                 ],
               ),
             ),
+          if (_isBirthdayEasterEgg)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _easterEggController,
+                  builder: (context, child) {
+                    return CustomPaint(
+                      painter: _BirthdaySparklePainter(
+                        progress: _easterEggController.value,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
+  Widget _buildBirthdayBanner() {
+    return AnimatedBuilder(
+      animation: _easterEggController,
+      builder: (context, child) {
+        final pulse = 1 + (_easterEggController.value * 0.08);
+
+        return Transform.scale(
+          scale: pulse,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFB91C1C),
+                  Color(0xFFF97316),
+                  Color(0xFFFACC15),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33B45309),
+                  blurRadius: 22,
+                  offset: Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        '4/3 限定彩蛋',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    const Icon(
+                      Icons.cake_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  '塗哥生日快樂',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '今彩539頭獎得主鋒兄',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFFFF7D6),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: const [
+                    _BirthdayChip(label: '今天全站一起幫塗哥慶生'),
+                    _BirthdayChip(label: '財運祝福送給鋒兄'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
   Widget _buildHeroCard() {
     final fetchedAt = _data == null
         ? '--'
@@ -671,5 +809,86 @@ class _FinancePill extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _BirthdayChip extends StatelessWidget {
+  final String label;
+
+  const _BirthdayChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withOpacity(0.18)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _BirthdaySparklePainter extends CustomPainter {
+  final double progress;
+
+  const _BirthdaySparklePainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final glowPaint = Paint()..style = PaintingStyle.fill;
+    final dots = [
+      (Offset(size.width * 0.14, size.height * (0.10 + progress * 0.05)),
+          const Color(0x66F97316), 34.0),
+      (Offset(size.width * 0.86, size.height * (0.18 - progress * 0.06)),
+          const Color(0x55EAB308), 28.0),
+      (Offset(size.width * 0.20, size.height * (0.55 - progress * 0.03)),
+          const Color(0x4438BDF8), 22.0),
+      (Offset(size.width * 0.78, size.height * (0.68 + progress * 0.04)),
+          const Color(0x44EC4899), 26.0),
+    ];
+
+    for (final dot in dots) {
+      glowPaint.color = dot.$2;
+      canvas.drawCircle(dot.$1, dot.$3, glowPaint);
+    }
+
+    final starPaint = Paint()
+      ..color = const Color(0x55FFFFFF)
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 3;
+    final stars = [
+      Offset(size.width * 0.10, size.height * 0.28),
+      Offset(size.width * 0.89, size.height * 0.33),
+      Offset(size.width * 0.16, size.height * 0.82),
+      Offset(size.width * 0.92, size.height * 0.78),
+    ];
+
+    for (final star in stars) {
+      final length = 10 + (progress * 8);
+      canvas.drawLine(
+        Offset(star.dx - length, star.dy),
+        Offset(star.dx + length, star.dy),
+        starPaint,
+      );
+      canvas.drawLine(
+        Offset(star.dx, star.dy - length),
+        Offset(star.dx, star.dy + length),
+        starPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BirthdaySparklePainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
