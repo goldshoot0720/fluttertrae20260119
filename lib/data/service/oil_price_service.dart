@@ -1,111 +1,250 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show HttpException;
 
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../model/oil_price_point.dart';
 
-class OilPriceSnapshot {
-  final OilPricePoint point;
-  final String sourceUrl;
+const String kOqdSourceUrl = 'https://www.gulfmerc.com/';
 
-  const OilPriceSnapshot({
-    required this.point,
-    required this.sourceUrl,
+@pragma('vm:entry-point')
+Future<void> syncOilPriceBackground() async {
+  await OilPriceService().syncScheduled();
+}
+
+class OilPriceSyncResult {
+  final bool fetched;
+  final String message;
+  final OilPricePoint? point;
+
+  const OilPriceSyncResult({
+    required this.fetched,
+    required this.message,
+    this.point,
   });
 }
 
 class OilPriceService {
-  static const String _sourceUrl = 'https://www.gulfmerc.com/';
+  OilPriceService._();
+
+  static final OilPriceService _instance = OilPriceService._();
+
+  factory OilPriceService() => _instance;
+
   static const String _historyKey = 'oil_price_history_v1';
-  static const int _maxHistoryItems = 120;
+  static const String _lastScheduledFetchKey = 'oil_price_last_scheduled_fetch';
 
-  Future<OilPriceSnapshot> fetchLatestPrice() async {
-    final html = await _downloadHtml();
-    final parsed = _extractMarkerPrice(html);
-    final point = OilPricePoint(
-      capturedAt: DateTime.now(),
-      price: parsed.price,
-      publishedLabel: parsed.publishedLabel,
-    );
+  Timer? _timer;
 
-    await _savePoint(point);
+  Future<void> init() async {
+    await syncOnAppLaunch();
+    _startForegroundScheduler();
+  }
 
-    return OilPriceSnapshot(
+  Future<OilPriceSyncResult> syncOnAppLaunch() {
+    return sync(force: true, allowBeforeOnePm: true);
+  }
+
+  Future<OilPriceSyncResult> syncScheduled() {
+    return sync(force: false, allowBeforeOnePm: false);
+  }
+
+  Future<OilPriceSyncResult> sync({
+    required bool force,
+    required bool allowBeforeOnePm,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    final todayKey = DateFormat('yyyy-MM-dd').format(now);
+
+    if (!force && !allowBeforeOnePm) {
+      if (now.hour < 13) {
+        return const OilPriceSyncResult(
+          fetched: false,
+          message: 'Waiting for the daily 1 PM fetch window.',
+        );
+      }
+
+      if (prefs.getString(_lastScheduledFetchKey) == todayKey) {
+        return const OilPriceSyncResult(
+          fetched: false,
+          message: 'Already fetched the OQD marker price today.',
+        );
+      }
+    }
+
+    final point = await fetchLatestPrice();
+    await _upsertHistory(point);
+
+    if (!force && !allowBeforeOnePm) {
+      await prefs.setString(_lastScheduledFetchKey, todayKey);
+    }
+
+    return OilPriceSyncResult(
+      fetched: true,
+      message: 'Fetched ${point.price.toStringAsFixed(2)} for ${DateFormat('yyyy/MM/dd').format(point.marketDate)}.',
       point: point,
-      sourceUrl: _sourceUrl,
     );
   }
 
   Future<List<OilPricePoint>> loadHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    final rawItems = prefs.getStringList(_historyKey) ?? const [];
-    final items = <OilPricePoint>[];
-
-    for (final raw in rawItems) {
-      try {
-        items.add(
-          OilPricePoint.fromJson(jsonDecode(raw) as Map<String, dynamic>),
-        );
-      } catch (_) {
-        // Ignore malformed cached rows.
-      }
+    final raw = prefs.getString(_historyKey);
+    if (raw == null || raw.isEmpty) {
+      return [];
     }
 
-    items.sort((a, b) => a.capturedAt.compareTo(b.capturedAt));
-    return items;
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) {
+      return [];
+    }
+
+    final history = decoded
+        .whereType<Map<String, dynamic>>()
+        .map(OilPricePoint.fromJson)
+        .toList()
+      ..sort((a, b) => a.marketDate.compareTo(b.marketDate));
+    return history;
   }
 
-  Future<void> _savePoint(OilPricePoint point) async {
+  Future<OilPricePoint?> latestStoredPoint() async {
     final history = await loadHistory();
+    if (history.isEmpty) {
+      return null;
+    }
+    return history.last;
+  }
 
-    if (history.isNotEmpty) {
-      final previous = history.last;
-      final minutesSinceLast =
-          point.capturedAt.difference(previous.capturedAt).inMinutes;
-      final priceDelta = (point.price - previous.price).abs();
+  Future<OilPricePoint> fetchLatestPrice() async {
+    final html = await _downloadHtml(kOqdSourceUrl);
+    return parseMarkerPriceFromHtml(html);
+  }
 
-      if (minutesSinceLast < 30 &&
-          priceDelta < 0.001 &&
-          point.publishedLabel == previous.publishedLabel) {
-        return;
+  Future<void> _upsertHistory(OilPricePoint point) async {
+    final prefs = await SharedPreferences.getInstance();
+    final history = await loadHistory();
+    final marketKey = DateFormat('yyyy-MM-dd').format(point.marketDate);
+
+    final index = history.indexWhere(
+      (item) => DateFormat('yyyy-MM-dd').format(item.marketDate) == marketKey,
+    );
+
+    if (index >= 0) {
+      history[index] = point;
+    } else {
+      history.add(point);
+    }
+
+    history.sort((a, b) => a.marketDate.compareTo(b.marketDate));
+    final encoded = jsonEncode(history.map((item) => item.toJson()).toList());
+    await prefs.setString(_historyKey, encoded);
+  }
+
+  void _startForegroundScheduler() {
+    _timer ??= Timer.periodic(const Duration(minutes: 30), (_) async {
+      try {
+        await syncScheduled();
+      } catch (_) {
+        // Keep the scheduler quiet; the UI can surface errors on demand.
+      }
+    });
+  }
+
+  Future<String> _downloadHtml(String url) async {
+    final urls = <String>[
+      url,
+      if (url == kOqdSourceUrl) 'https://gulfmerc.com/',
+    ];
+
+    Object? lastError;
+
+    for (final currentUrl in urls) {
+      for (var attempt = 0; attempt < 3; attempt++) {
+        final client = http.Client();
+        try {
+          final response = await client
+              .get(
+                Uri.parse(currentUrl),
+                headers: const {
+                  'User-Agent': 'SubscriptionManager/1.0.0 OilMonitor',
+                  'Accept':
+                      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'Accept-Encoding': 'identity',
+                  'Connection': 'close',
+                  'Cache-Control': 'no-cache',
+                },
+              )
+              .timeout(const Duration(seconds: 20));
+
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            return utf8.decode(response.bodyBytes, allowMalformed: true);
+          }
+
+          lastError = HttpException(
+            'Failed to fetch OQD marker page: HTTP ${response.statusCode}',
+            uri: Uri.parse(currentUrl),
+          );
+        } catch (e) {
+          lastError = e;
+          if (attempt < 2) {
+            await Future.delayed(Duration(milliseconds: 600 * (attempt + 1)));
+          }
+        } finally {
+          client.close();
+        }
       }
     }
 
-    final updated = [...history, point];
-    if (updated.length > _maxHistoryItems) {
-      updated.removeRange(0, updated.length - _maxHistoryItems);
+    throw lastError ??
+        const HttpException('Failed to fetch OQD marker page for an unknown reason.');
+  }
+
+  static OilPricePoint parseMarkerPriceFromHtml(String html) {
+    final plainText = _htmlToText(html);
+
+    final topBannerPattern = RegExp(
+      r'OQD Marker Price\s+([A-Za-z]+\s+\d{1,2},\s*\d{4})\s+is\s+([0-9]+(?:\.[0-9]+)?)',
+      caseSensitive: false,
+    );
+    final summaryPattern = RegExp(
+      r'OQD Daily Marker Price\s+([0-9]+(?:\.[0-9]+)?)\s+(\d{1,2}\s+[A-Za-z]{3}[-,]\s*\d{4})',
+      caseSensitive: false,
+    );
+
+    final topBannerMatch = topBannerPattern.firstMatch(plainText);
+    if (topBannerMatch != null) {
+      final marketDate = _parseMarketDate(topBannerMatch.group(1)!);
+      final price = double.parse(topBannerMatch.group(2)!);
+      return OilPricePoint(
+        marketDate: marketDate,
+        price: price,
+        fetchedAt: DateTime.now(),
+        sourceUrl: kOqdSourceUrl,
+      );
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _historyKey,
-      updated.map((item) => jsonEncode(item.toJson())).toList(),
+    final summaryMatch = summaryPattern.firstMatch(plainText);
+    if (summaryMatch != null) {
+      final price = double.parse(summaryMatch.group(1)!);
+      final marketDate = _parseMarketDate(summaryMatch.group(2)!);
+      return OilPricePoint(
+        marketDate: marketDate,
+        price: price,
+        fetchedAt: DateTime.now(),
+        sourceUrl: kOqdSourceUrl,
+      );
+    }
+
+    throw const FormatException(
+      'Unable to locate OQD Daily Marker Price on the Gulf Mercantile Exchange homepage.',
     );
   }
 
-  Future<String> _downloadHtml() async {
-    final client = HttpClient();
-    client.connectionTimeout = const Duration(seconds: 15);
-    client.userAgent = 'AtlasMonitor/1.0.3';
-
-    try {
-      final request = await client.getUrl(Uri.parse(_sourceUrl));
-      final response = await request.close();
-      if (response.statusCode != HttpStatus.ok) {
-        throw HttpException(
-          'Unexpected status ${response.statusCode} from $_sourceUrl',
-        );
-      }
-
-      return await response.transform(utf8.decoder).join();
-    } finally {
-      client.close(force: true);
-    }
-  }
-
-  _OilPriceParseResult _extractMarkerPrice(String html) {
-    final plainText = html
+  static String _htmlToText(String html) {
+    return html
         .replaceAll(
           RegExp(r'<script[\s\S]*?</script>', caseSensitive: false),
           ' ',
@@ -116,33 +255,28 @@ class OilPriceService {
         )
         .replaceAll(RegExp(r'<[^>]+>'), ' ')
         .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&#8217;', "'")
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+  }
 
-    final match = RegExp(
-      r'OQD Daily Marker Price\s+([0-9]+(?:\.[0-9]+)?)\s+([0-9]{1,2}\s+[A-Za-z]{3}[-,]\s*[0-9]{4})',
-      caseSensitive: false,
-    ).firstMatch(plainText);
+  static DateTime _parseMarketDate(String value) {
+    final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    const formats = [
+      'MMMM d, yyyy',
+      'd MMM-yyyy',
+      'd MMM, yyyy',
+    ];
 
-    if (match == null) {
-      throw const FormatException(
-        'Unable to parse OQD Daily Marker Price from gulfmerc.com.',
-      );
+    for (final format in formats) {
+      try {
+        return DateFormat(format, 'en_US').parseStrict(normalized);
+      } catch (_) {
+        // Try the next supported format.
+      }
     }
 
-    return _OilPriceParseResult(
-      price: double.parse(match.group(1)!),
-      publishedLabel: match.group(2)!.replaceAll(RegExp(r'\s+'), ' ').trim(),
-    );
+    throw FormatException('Unsupported OQD market date format: $value');
   }
-}
-
-class _OilPriceParseResult {
-  final double price;
-  final String publishedLabel;
-
-  const _OilPriceParseResult({
-    required this.price,
-    required this.publishedLabel,
-  });
 }

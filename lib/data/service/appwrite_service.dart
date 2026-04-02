@@ -1,7 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:appwrite/appwrite.dart';
 import 'package:appwrite/models.dart';
-import 'package:appwrite/src/enums.dart';
 import 'appwrite_config.dart';
 import '../model/subscription_item.dart';
 
@@ -9,14 +10,17 @@ class AppwriteService {
   static const String subscriptionCollectionName = 'subscription';
 
   late Client client;
+  late Account account;
   late Databases databases;
   final Completer<void> _initCompleter = Completer<void>();
+  Future<void>? _sessionFuture;
   final Map<String, Future<String>> _collectionIdFutures = {};
 
   AppwriteService() {
     client = Client()
         .setEndpoint(AppwriteConfig.endpoint)
         .setProject(AppwriteConfig.projectId);
+    account = Account(client);
     databases = Databases(client);
     _waitAndOverrideUserAgent();
   }
@@ -26,13 +30,59 @@ class AppwriteService {
     while (!(client as dynamic).initialized) {
       await Future.delayed(const Duration(milliseconds: 10));
     }
-    client.addHeader('user-agent', 'SubscriptionManager/1.0.0');
+    client.addHeader('user-agent', 'SubscriptionManager/1.0.3');
     _initCompleter.complete();
   }
 
   Future<void> _ensureInit() => _initCompleter.future;
 
+  Future<void> _ensureSession() {
+    return _sessionFuture ??= _createAnonymousSessionIfNeeded();
+  }
+
+  Future<void> _createAnonymousSessionIfNeeded() async {
+    await _ensureInit();
+
+    try {
+      await account.get();
+      return;
+    } on AppwriteException catch (e) {
+      if (e.code != 401) {
+        rethrow;
+      }
+    }
+
+    try {
+      await account.createAnonymousSession();
+    } on AppwriteException catch (e) {
+      final message = (e.message ?? '').toLowerCase();
+      final hasActiveSession =
+          e.code == 409 ||
+          (message.contains('session') && message.contains('active'));
+      if (!hasActiveSession) {
+        rethrow;
+      }
+    }
+  }
+
   Future<String> _getSubscriptionCollectionId() {
+    return _getSubscriptionCollectionIdWithFallback();
+  }
+
+  Future<String> _getSubscriptionCollectionIdWithFallback({
+    bool allowConfiguredId = true,
+  }) {
+    if (allowConfiguredId &&
+        AppwriteConfig.subscriptionCollectionId.trim().isNotEmpty) {
+      return Future.value(AppwriteConfig.subscriptionCollectionId);
+    }
+    return _getCollectionIdByName(subscriptionCollectionName);
+  }
+
+  Future<String> _resolveSubscriptionCollectionIdFromName() {
+    if (AppwriteConfig.subscriptionCollectionId.trim().isNotEmpty) {
+      _invalidateCollectionIdCache(subscriptionCollectionName);
+    }
     return _getCollectionIdByName(subscriptionCollectionName);
   }
 
@@ -44,18 +94,33 @@ class AppwriteService {
   Future<String> _resolveCollectionIdByName(String collectionName) async {
     await _ensureInit();
 
-    final response = await client.call(
-      HttpMethod.get,
-      path: '/databases/${AppwriteConfig.databaseId}/collections',
-    );
+    final httpClient = HttpClient();
+    try {
+      final uri = Uri.parse(
+        '${AppwriteConfig.endpoint}/databases/${AppwriteConfig.databaseId}/collections',
+      );
+      final request = await httpClient.getUrl(uri);
+      request.headers.set('X-Appwrite-Project', AppwriteConfig.projectId);
+      request.headers.set('X-Appwrite-Response-Format', '1.8.0');
 
-    final collections = (response.data['collections'] as List<dynamic>? ?? [])
-        .whereType<Map<String, dynamic>>();
+      final response = await request.close();
+      final responseBody = await response.transform(utf8.decoder).join();
+      final responseData = jsonDecode(responseBody);
+      final collections = responseData['collections'];
 
-    for (final collection in collections) {
-      if (collection['name'] == collectionName) {
-        return collection[r'$id'] as String;
+      if (collections is List) {
+        for (final collection in collections) {
+          if (collection is Map<String, dynamic> &&
+              collection['name'] == collectionName) {
+            final collectionId = collection[r'$id'];
+            if (collectionId is String && collectionId.isNotEmpty) {
+              return collectionId;
+            }
+          }
+        }
       }
+    } finally {
+      httpClient.close(force: true);
     }
 
     throw Exception(
@@ -82,14 +147,14 @@ class AppwriteService {
         rethrow;
       }
 
-      _invalidateCollectionIdCache(subscriptionCollectionName);
-      final refreshedCollectionId = await _getSubscriptionCollectionId();
+      final refreshedCollectionId =
+          await _resolveSubscriptionCollectionIdFromName();
       return action(refreshedCollectionId);
     }
   }
 
   Future<List<SubscriptionItem>> getSubscriptions() async {
-    await _ensureInit();
+    await _ensureSession();
     try {
       return await _withSubscriptionCollection((collectionId) async {
         final allSubscriptions = <SubscriptionItem>[];
@@ -141,7 +206,7 @@ class AppwriteService {
   }
 
   Future<void> addSubscription(SubscriptionItem item) async {
-    await _ensureInit();
+    await _ensureSession();
     try {
       await _withSubscriptionCollection((collectionId) {
         return databases.createDocument(
@@ -158,7 +223,7 @@ class AppwriteService {
   }
 
   Future<void> updateSubscription(SubscriptionItem item) async {
-    await _ensureInit();
+    await _ensureSession();
     if (item.id.trim().isEmpty) {
       throw ArgumentError(
         'Cannot update subscription without a document id.',
@@ -180,7 +245,7 @@ class AppwriteService {
   }
 
   Future<void> deleteSubscription(String id) async {
-    await _ensureInit();
+    await _ensureSession();
     if (id.trim().isEmpty) {
       throw ArgumentError(
         'Cannot delete subscription without a document id.',

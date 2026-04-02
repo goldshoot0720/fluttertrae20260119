@@ -18,7 +18,6 @@ class OilPriceScreen extends StatefulWidget {
 class _OilPriceScreenState extends State<OilPriceScreen> {
   final OilPriceService _service = OilPriceService();
 
-  OilPriceSnapshot? _snapshot;
   List<OilPricePoint> _history = [];
   bool _isLoading = true;
   bool _isRefreshing = false;
@@ -37,15 +36,13 @@ class _OilPriceScreenState extends State<OilPriceScreen> {
     });
 
     try {
-      var snapshot = _snapshot;
-      if (refresh || snapshot == null) {
-        snapshot = await _service.fetchLatestPrice();
+      if (refresh || _history.isEmpty) {
+        await _service.fetchLatestPrice();
       }
       final history = await _service.loadHistory();
 
       if (!mounted) return;
       setState(() {
-        _snapshot = snapshot;
         _history = history;
         _isLoading = false;
       });
@@ -65,11 +62,10 @@ class _OilPriceScreenState extends State<OilPriceScreen> {
     });
 
     try {
-      final snapshot = await _service.fetchLatestPrice();
+      await _service.fetchLatestPrice();
       final history = await _service.loadHistory();
       if (!mounted) return;
       setState(() {
-        _snapshot = snapshot;
         _history = history;
         _isRefreshing = false;
       });
@@ -83,7 +79,7 @@ class _OilPriceScreenState extends State<OilPriceScreen> {
   }
 
   Future<void> _openSource() async {
-    final url = _snapshot?.sourceUrl ?? 'https://www.gulfmerc.com/';
+    final url = _history.isNotEmpty ? _history.last.sourceUrl : kOqdSourceUrl;
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
@@ -92,7 +88,7 @@ class _OilPriceScreenState extends State<OilPriceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final latest = _snapshot?.point ?? (_history.isNotEmpty ? _history.last : null);
+    final latest = _history.isNotEmpty ? _history.last : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3EEE4),
@@ -139,12 +135,12 @@ class _OilPriceScreenState extends State<OilPriceScreen> {
   }
 
   Widget _buildHeroCard(OilPricePoint? latest) {
-    final priceLabel =
-        latest == null ? '--' : '\$${latest.price.toStringAsFixed(2)}';
+    final priceLabel = latest == null ? '--' : '\$${latest.price.toStringAsFixed(2)}';
     final updatedAt = latest == null
         ? '--'
-        : DateFormat('yyyy/MM/dd HH:mm').format(latest.capturedAt.toLocal());
-    final publishedLabel = latest?.publishedLabel ?? '--';
+        : DateFormat('yyyy/MM/dd HH:mm').format(latest.fetchedAt.toLocal());
+    final marketDate =
+        latest == null ? '--' : DateFormat('yyyy/MM/dd').format(latest.marketDate.toLocal());
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -198,7 +194,7 @@ class _OilPriceScreenState extends State<OilPriceScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Source date: $publishedLabel',
+            'Market date: $marketDate',
             style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF6D645B),
@@ -277,7 +273,7 @@ class _OilPriceScreenState extends State<OilPriceScreen> {
                 child: Text(
                   recent.isEmpty
                       ? '--'
-                      : DateFormat('MM/dd HH:mm').format(recent.first.capturedAt.toLocal()),
+                      : DateFormat('MM/dd').format(recent.first.marketDate.toLocal()),
                   style: const TextStyle(color: Color(0xFF6D645B), fontSize: 12),
                 ),
               ),
@@ -293,7 +289,7 @@ class _OilPriceScreenState extends State<OilPriceScreen> {
               const Spacer(),
               if (recent.isNotEmpty)
                 Text(
-                  DateFormat('MM/dd HH:mm').format(recent.last.capturedAt.toLocal()),
+                  DateFormat('MM/dd').format(recent.last.marketDate.toLocal()),
                   style: const TextStyle(color: Color(0xFF6D645B), fontSize: 12),
                 ),
             ],
@@ -341,7 +337,7 @@ class _OilPriceScreenState extends State<OilPriceScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            DateFormat('yyyy/MM/dd HH:mm').format(point.capturedAt.toLocal()),
+                            DateFormat('yyyy/MM/dd HH:mm').format(point.fetchedAt.toLocal()),
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF1E1B18),
@@ -349,7 +345,7 @@ class _OilPriceScreenState extends State<OilPriceScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            point.publishedLabel,
+                            DateFormat('yyyy/MM/dd').format(point.marketDate.toLocal()),
                             style: const TextStyle(
                               fontSize: 12,
                               color: Color(0xFF7E746A),

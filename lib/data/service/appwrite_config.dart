@@ -14,6 +14,11 @@ class AppwriteConfig {
     defaultValue: '69821743002139037da1',
   );
 
+  static const String subscriptionCollectionId = String.fromEnvironment(
+    'APPWRITE_SUBSCRIPTION_COLLECTION_ID',
+    defaultValue: '69b24465002d43df9b00',
+  );
+
   static const String bucketId = String.fromEnvironment(
     'APPWRITE_BUCKET_ID',
     defaultValue: '698215640037d1a67e6b',

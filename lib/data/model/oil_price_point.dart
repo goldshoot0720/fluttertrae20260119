@@ -1,27 +1,45 @@
 class OilPricePoint {
-  final DateTime capturedAt;
+  final DateTime marketDate;
   final double price;
-  final String publishedLabel;
+  final DateTime fetchedAt;
+  final String sourceUrl;
 
   const OilPricePoint({
-    required this.capturedAt,
+    required this.marketDate,
     required this.price,
-    required this.publishedLabel,
+    required this.fetchedAt,
+    required this.sourceUrl,
   });
 
   factory OilPricePoint.fromJson(Map<String, dynamic> json) {
     return OilPricePoint(
-      capturedAt: DateTime.parse(json['capturedAt'] as String),
+      marketDate: DateTime.parse(json['marketDate'] as String),
       price: (json['price'] as num).toDouble(),
-      publishedLabel: json['publishedLabel'] as String? ?? '',
+      fetchedAt: DateTime.parse(json['fetchedAt'] as String),
+      sourceUrl: json['sourceUrl'] as String,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'capturedAt': capturedAt.toIso8601String(),
+      'marketDate': marketDate.toIso8601String(),
       'price': price,
-      'publishedLabel': publishedLabel,
+      'fetchedAt': fetchedAt.toIso8601String(),
+      'sourceUrl': sourceUrl,
     };
+  }
+
+  OilPricePoint copyWith({
+    DateTime? marketDate,
+    double? price,
+    DateTime? fetchedAt,
+    String? sourceUrl,
+  }) {
+    return OilPricePoint(
+      marketDate: marketDate ?? this.marketDate,
+      price: price ?? this.price,
+      fetchedAt: fetchedAt ?? this.fetchedAt,
+      sourceUrl: sourceUrl ?? this.sourceUrl,
+    );
   }
 }
