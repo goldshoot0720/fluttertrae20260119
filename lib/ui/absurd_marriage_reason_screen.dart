@@ -44,8 +44,36 @@ class _AbsurdMarriageReasonScreenState
   }
 
   bool get _isBirthdayEasterEgg {
+    return _birthdayEasterEgg != null;
+  }
+
+  _BirthdayEasterEggConfig? get _birthdayEasterEgg {
     final now = DateTime.now();
-    return now.month == 4 && now.day == 3;
+    if (now.month == 4 && now.day == 3) {
+      return const _BirthdayEasterEggConfig(
+        badgeLabel: '4/3 限定彩蛋',
+        title: '塗哥生日快樂',
+        subtitle: '今彩539頭獎得主鋒兄',
+        chips: [
+          '今天全站一起幫塗哥慶生',
+          '財運祝福送給鋒兄',
+        ],
+      );
+    }
+
+    if (now.month == 11 && now.day == 27) {
+      return const _BirthdayEasterEggConfig(
+        badgeLabel: '11/27 限定彩蛋',
+        title: '鋒兄生日快樂',
+        subtitle: '高考三級資訊處理榜首鋒兄',
+        chips: [
+          '今天全站一起幫鋒兄慶生',
+          '榜首氣場直接開滿',
+        ],
+      );
+    }
+
+    return null;
   }
 
   Future<void> _load({bool refresh = false}) async {
@@ -161,6 +189,11 @@ class _AbsurdMarriageReasonScreenState
   }
 
   Widget _buildBirthdayBanner() {
+    final easterEgg = _birthdayEasterEgg;
+    if (easterEgg == null) {
+      return const SizedBox.shrink();
+    }
+
     return AnimatedBuilder(
       animation: _easterEggController,
       builder: (context, child) {
@@ -203,8 +236,8 @@ class _AbsurdMarriageReasonScreenState
                         color: Colors.white.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: const Text(
-                        '4/3 限定彩蛋',
+                      child: Text(
+                        easterEgg.badgeLabel,
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
@@ -220,9 +253,9 @@ class _AbsurdMarriageReasonScreenState
                   ],
                 ),
                 const SizedBox(height: 18),
-                const Text(
-                  '塗哥生日快樂',
-                  style: TextStyle(
+                Text(
+                  easterEgg.title,
+                  style: const TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
@@ -230,9 +263,9 @@ class _AbsurdMarriageReasonScreenState
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  '今彩539頭獎得主鋒兄',
-                  style: TextStyle(
+                Text(
+                  easterEgg.subtitle,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFFFFF7D6),
@@ -242,10 +275,9 @@ class _AbsurdMarriageReasonScreenState
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: const [
-                    _BirthdayChip(label: '今天全站一起幫塗哥慶生'),
-                    _BirthdayChip(label: '財運祝福送給鋒兄'),
-                  ],
+                  children: easterEgg.chips
+                      .map((label) => _BirthdayChip(label: label))
+                      .toList(),
                 ),
               ],
             ),
@@ -835,6 +867,20 @@ class _BirthdayChip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BirthdayEasterEggConfig {
+  final String badgeLabel;
+  final String title;
+  final String subtitle;
+  final List<String> chips;
+
+  const _BirthdayEasterEggConfig({
+    required this.badgeLabel,
+    required this.title,
+    required this.subtitle,
+    required this.chips,
+  });
 }
 
 class _BirthdaySparklePainter extends CustomPainter {
