@@ -271,6 +271,8 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildFengBroAsciiArt(),
+                const SizedBox(height: 18),
                 const Text(
                   '訂閱總覽',
                   style: TextStyle(
@@ -378,6 +380,54 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFengBroAsciiArt() {
+    const asciiArt = r'''
+ ______ ______ _   _  _____   ____   _____   ____
+|  ____|  ____| \ | |/ ____| |  _ \ |  __ \ / __ \
+| |__  | |__  |  \| | |  __  | |_) || |__) | |  | |
+|  __| |  __| | . ` | | |_ | |  _ < |  _  /| |  | |
+| |    | |____| |\  | |__| | | |_) || | \ \| |__| |
+|_|    |______|_| \_|\_____| |____/ |_|  \_\\____/
+''';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1021),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF34375F)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Text(
+              asciiArt,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 10.8,
+                height: 1.12,
+                color: Color(0xFF86F8D7),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'feng bro',
+            style: TextStyle(
+              color: Color(0xFF8FA3C7),
+              letterSpacing: 2.6,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
