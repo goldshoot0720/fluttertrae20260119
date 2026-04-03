@@ -19,15 +19,21 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WindowListener {
+class _HomeScreenState extends State<HomeScreen>
+    with WindowListener, SingleTickerProviderStateMixin {
   final AppwriteService _appwriteService = AppwriteService();
   List<SubscriptionItem> _subscriptions = [];
   bool _isLoading = true;
   bool _bannerDismissed = false;
+  late final AnimationController _asciiController;
 
   @override
   void initState() {
     super.initState();
+    _asciiController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat(reverse: true);
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.addListener(this);
       _initSystemTray();
@@ -37,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
 
   @override
   void dispose() {
+    _asciiController.dispose();
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.removeListener(this);
     }
@@ -387,49 +394,118 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
 
   Widget _buildFengBroAsciiArt() {
     const asciiArt = r'''
- ______ ______ _   _  _____   ____   _____   ____
-|  ____|  ____| \ | |/ ____| |  _ \ |  __ \ / __ \
-| |__  | |__  |  \| | |  __  | |_) || |__) | |  | |
-|  __| |  __| | . ` | | |_ | |  _ < |  _  /| |  | |
-| |    | |____| |\  | |__| | | |_) || | \ \| |__| |
-|_|    |______|_| \_|\_____| |____/ |_|  \_\\____/
+ _______ ______ _   _  _____   ______  ______   ____  
+|__   __|  ____| \ | |/ ____| |  ____||  __ \ / __ \ 
+   | |  | |__  |  \| | |  __  | |__   | |__) | |  | |
+   | |  |  __| | . ` | | |_ | |  __|  |  _  /| |  | |
+   | |  | |____| |\  | |__| | | |____ | | \ \| |__| |
+   |_|  |______|_| \_|\_____| |______||_|  \_\\____/ 
 ''';
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F1021),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF34375F)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Text(
-              asciiArt,
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 10.8,
-                height: 1.12,
-                color: Color(0xFF86F8D7),
-                fontWeight: FontWeight.w700,
+    return AnimatedBuilder(
+      animation: _asciiController,
+      builder: (context, child) {
+        final lift = (_asciiController.value - 0.5) * 8;
+        final glow = 0.18 + (_asciiController.value * 0.18);
+
+        return Transform.translate(
+          offset: Offset(0, lift),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0B1023), Color(0xFF111936), Color(0xFF0C152B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0xFF32446C)),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF65FFD5).withOpacity(glow),
+                  blurRadius: 28,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF172445),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFF35507F)),
+                  ),
+                  child: const Text(
+                    'ASCII MODE',
+                    style: TextStyle(
+                      color: Color(0xFF92A9D8),
+                      letterSpacing: 2.4,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Text(
+                    asciiArt,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12.6,
+                      height: 1.08,
+                      color: const Color(0xFFA0FFE3),
+                      fontWeight: FontWeight.w700,
+                      shadows: [
+                        Shadow(
+                          color: const Color(0xFF5DFFD1).withOpacity(0.55 + glow),
+                          blurRadius: 14,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'feng bro',
+                        style: TextStyle(
+                          color: Color(0xFFE2ECFF),
+                          letterSpacing: 3.8,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF13203E),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        'LIVE',
+                        style: TextStyle(
+                          color: Color(0xFF86F8D7),
+                          letterSpacing: 1.8,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            'feng bro',
-            style: TextStyle(
-              color: Color(0xFF8FA3C7),
-              letterSpacing: 2.6,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
