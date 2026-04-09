@@ -24,6 +24,7 @@ class _BatteryScreenState extends State<BatteryScreen> {
   Duration? _estimateDelta;
   DateTime? _lastSampleAt;
   int? _lastSampleLevel;
+  String? _estimateHint;
   String? _errorMessage;
 
   @override
@@ -51,7 +52,7 @@ class _BatteryScreenState extends State<BatteryScreen> {
         lastFullChargeAt = DateTime.fromMillisecondsSinceEpoch(stored);
       }
 
-      if (level >= 100) {
+      if (state == BatteryState.full || level >= 100) {
         lastFullChargeAt = DateTime.now();
         await prefs.setInt(
           _lastFullChargeKey,
@@ -76,11 +77,13 @@ class _BatteryScreenState extends State<BatteryScreen> {
   }
 
   void _computeEstimate(DateTime now, int level, BatteryState state) {
+    _estimateHint = null;
     if (_lastSampleAt == null || _lastSampleLevel == null) {
       _lastSampleAt = now;
       _lastSampleLevel = level;
       _estimateTargetTime = null;
       _estimateDelta = null;
+      _estimateHint = '正在收集資料…';
       return;
     }
 
@@ -89,6 +92,7 @@ class _BatteryScreenState extends State<BatteryScreen> {
     final levelDelta = level - _lastSampleLevel!;
 
     if (elapsedSeconds <= 0 || levelDelta == 0) {
+      _estimateHint = '電量變化不足以估算';
       return;
     }
 
@@ -99,6 +103,7 @@ class _BatteryScreenState extends State<BatteryScreen> {
     if (ratePerSecond.abs() < 0.001) {
       _estimateTargetTime = null;
       _estimateDelta = null;
+      _estimateHint = '電量變化過慢，暫無估算';
     } else {
       final secondsToTarget = remaining / ratePerSecond;
       if (secondsToTarget.isFinite && secondsToTarget > 0) {
@@ -107,6 +112,7 @@ class _BatteryScreenState extends State<BatteryScreen> {
       } else {
         _estimateDelta = null;
         _estimateTargetTime = null;
+        _estimateHint = '暫無可用估算';
       }
     }
 
@@ -126,16 +132,17 @@ class _BatteryScreenState extends State<BatteryScreen> {
                 ? '已充滿'
                 : '未充電';
     final lastFullChargeLabel = _lastFullChargeAt == null
-        ? '--'
+        ? '尚未記錄'
         : DateFormat('yyyy/MM/dd HH:mm').format(_lastFullChargeAt!.toLocal());
     final lastFullDelta = _lastFullChargeAt == null
-        ? '--'
+        ? '尚未記錄'
         : _formatDuration(DateTime.now().difference(_lastFullChargeAt!));
     final estimateTimeLabel = _estimateTargetTime == null
-        ? '--'
+        ? (_estimateHint ?? '尚未估算')
         : DateFormat('yyyy/MM/dd HH:mm').format(_estimateTargetTime!.toLocal());
-    final estimateDeltaLabel =
-        _estimateDelta == null ? '--' : _formatDuration(_estimateDelta!);
+    final estimateDeltaLabel = _estimateDelta == null
+        ? (_estimateHint ?? '尚未估算')
+        : _formatDuration(_estimateDelta!);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5EFE3),
