@@ -6,6 +6,7 @@
 
 #include "generated_plugin_registrant.h"
 
+#include <battery_plus/battery_plus_windows_plugin.h>
 #include <desktop_webview_window/desktop_webview_window_plugin.h>
 #include <local_notifier/local_notifier_plugin.h>
 #include <screen_retriever_windows/screen_retriever_windows_plugin_c_api.h>
@@ -15,6 +16,8 @@
 #include <window_to_front/window_to_front_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
+  BatteryPlusWindowsPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("BatteryPlusWindowsPlugin"));
   DesktopWebviewWindowPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("DesktopWebviewWindowPlugin"));
   LocalNotifierPluginRegisterWithRegistrar(

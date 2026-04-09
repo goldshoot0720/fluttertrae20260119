@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  battery_plus
   desktop_webview_window
   local_notifier
   screen_retriever_windows
