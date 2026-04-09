@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 import '../data/model/subscription_item.dart';
 import '../data/service/appwrite_service.dart';
 import 'absurd_marriage_reason_screen.dart';
+import 'battery_screen.dart';
 import 'oil_price_screen.dart';
 import 'us_debt_screen.dart';
 import 'widgets/subscription_card.dart';
@@ -132,6 +133,12 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _openAbsurdMarriageReason() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AbsurdMarriageReasonScreen()),
+    );
+  }
+
+  Future<void> _openBattery() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const BatteryScreen()),
     );
   }
 
@@ -330,6 +337,11 @@ class _HomeScreenState extends State<HomeScreen>
                   spacing: 10,
                   runSpacing: 10,
                   children: [
+                    FilledButton.icon(
+                      onPressed: _openBattery,
+                      icon: const Icon(Icons.battery_full_rounded),
+                      label: const Text('電池選單'),
+                    ),
                     FilledButton.icon(
                       onPressed: _openAbsurdMarriageReason,
                       icon: const Icon(Icons.casino_rounded),
