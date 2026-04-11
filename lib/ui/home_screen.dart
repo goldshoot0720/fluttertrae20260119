@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -22,11 +25,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with WindowListener, SingleTickerProviderStateMixin {
+  static const _sleepPromptDateKey = 'sleep_prompt_date';
+  static const _sleepPromptCountKey = 'sleep_prompt_count';
+  static const _sleepPromptLastAtKey = 'sleep_prompt_last_at';
+
   final AppwriteService _appwriteService = AppwriteService();
   List<SubscriptionItem> _subscriptions = [];
   bool _isLoading = true;
   bool _bannerDismissed = false;
   late final AnimationController _asciiController;
+  Timer? _sleepPromptTimer;
+  int _sleepPromptCount = 0;
+  DateTime? _lastSleepPromptAt;
+  String _sleepPromptMessage = '尚未提示';
 
   @override
   void initState() {
@@ -35,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
+    _initSleepPromptState();
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.addListener(this);
       _initSystemTray();
@@ -45,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     _asciiController.dispose();
+    _sleepPromptTimer?.cancel();
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       windowManager.removeListener(this);
     }
@@ -134,6 +147,115 @@ class _HomeScreenState extends State<HomeScreen>
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AbsurdMarriageReasonScreen()),
     );
+  }
+
+  Future<void> _initSleepPromptState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final todayKey = DateFormat('yyyyMMdd').format(DateTime.now());
+    final storedDate = prefs.getString(_sleepPromptDateKey);
+
+    if (storedDate != todayKey) {
+      await prefs.setString(_sleepPromptDateKey, todayKey);
+      await prefs.setInt(_sleepPromptCountKey, 0);
+      await prefs.remove(_sleepPromptLastAtKey);
+    }
+
+    _sleepPromptCount = prefs.getInt(_sleepPromptCountKey) ?? 0;
+    final lastAtMillis = prefs.getInt(_sleepPromptLastAtKey);
+    if (lastAtMillis != null) {
+      _lastSleepPromptAt =
+          DateTime.fromMillisecondsSinceEpoch(lastAtMillis);
+      _sleepPromptMessage =
+          _formatPromptMessage(_lastSleepPromptAt!, _sleepPromptCount);
+    }
+
+    _sleepPromptTimer ??=
+        Timer.periodic(const Duration(seconds: 20), (_) {
+      _checkSleepPrompt();
+    });
+  }
+
+  Future<void> _checkSleepPrompt() async {
+    final now = DateTime.now();
+    if (now.hour < 0 || now.hour > 4) {
+      return;
+    }
+
+    final currentMinutes = now.hour * 60 + now.minute;
+    final schedule = _sleepPromptMinutes();
+    if (!schedule.contains(currentMinutes)) {
+      return;
+    }
+
+    if (_lastSleepPromptAt != null) {
+      final last = _lastSleepPromptAt!;
+      if (last.year == now.year &&
+          last.month == now.month &&
+          last.day == now.day &&
+          last.hour == now.hour &&
+          last.minute == now.minute) {
+        return;
+      }
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    _sleepPromptCount += 1;
+    _lastSleepPromptAt = now;
+    _sleepPromptMessage = _formatPromptMessage(now, _sleepPromptCount);
+    await prefs.setInt(_sleepPromptCountKey, _sleepPromptCount);
+    await prefs.setInt(
+      _sleepPromptLastAtKey,
+      now.millisecondsSinceEpoch,
+    );
+
+    if (!mounted) return;
+    setState(() {});
+    _showSleepSnackBar(_sleepPromptMessage);
+  }
+
+  void _showSleepSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFF2A1F35),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  String _formatPromptMessage(DateTime time, int count) {
+    final label = DateFormat('yyyy/MM/dd HH:mm').format(time);
+    return '睡眠提示 $label 第$count次';
+  }
+
+  Set<int> _sleepPromptMinutes() {
+    final minutes = <int>{};
+    for (var hour = 0; hour < 2; hour++) {
+      minutes.add(hour * 60);
+      minutes.add(hour * 60 + 30);
+    }
+    for (var m = 120; m <= 240; m += 15) {
+      minutes.add(m);
+    }
+    return minutes;
+  }
+
+  String _nextSleepPromptLabel() {
+    final now = DateTime.now();
+    final currentMinutes = now.hour * 60 + now.minute;
+    final schedule = _sleepPromptMinutes().toList()..sort();
+
+    for (final m in schedule) {
+      if (m >= currentMinutes) {
+        final h = m ~/ 60;
+        final min = m % 60;
+        final time = DateTime(now.year, now.month, now.day, h, min);
+        return DateFormat('HH:mm').format(time);
+      }
+    }
+    return '已結束';
   }
 
   Future<void> _openBattery() async {
@@ -271,6 +393,8 @@ class _HomeScreenState extends State<HomeScreen>
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       child: Column(
         children: [
+          _buildSleepPromptCard(),
+          const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -399,6 +523,73 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSleepPromptCard() {
+    final nextLabel = _nextSleepPromptLabel();
+    final today = DateFormat('yyyy/MM/dd').format(DateTime.now());
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1C2E),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF2F3552)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '首頁睡眠提示',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '今天日期：$today',
+            style: const TextStyle(
+              color: Color(0xFF9AA7C2),
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildSleepRow('提示訊息', _sleepPromptMessage),
+          _buildSleepRow('提示次數', '$_sleepPromptCount 次'),
+          _buildSleepRow('下一次提示', nextLabel),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSleepRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF9AA7C2),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
