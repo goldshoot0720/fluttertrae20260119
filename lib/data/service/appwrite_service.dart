@@ -109,6 +109,11 @@ class AppwriteService {
       final collections = responseData['collections'];
 
       if (collections is List) {
+        String? firstCollectionId;
+        String? caseInsensitiveMatchId;
+        String? fuzzyMatchId;
+        final normalizedTarget = collectionName.toLowerCase();
+
         for (final collection in collections) {
           if (collection is Map<String, dynamic> &&
               collection['name'] == collectionName) {
@@ -117,6 +122,43 @@ class AppwriteService {
               return collectionId;
             }
           }
+
+          if (collection is Map<String, dynamic>) {
+            final name = collection['name'];
+            final collectionId = collection[r'$id'];
+            if (collectionId is String && collectionId.isNotEmpty) {
+              if (firstCollectionId == null) {
+                firstCollectionId = collectionId;
+              }
+
+              if (name is String && name.isNotEmpty) {
+                final normalizedName = name.toLowerCase();
+                if (caseInsensitiveMatchId == null &&
+                    normalizedName == normalizedTarget) {
+                  caseInsensitiveMatchId = collectionId;
+                }
+                if (fuzzyMatchId == null &&
+                    (normalizedName.contains(normalizedTarget) ||
+                        normalizedName.contains('subscription') ||
+                        normalizedName.contains('subscr'))) {
+                  fuzzyMatchId = collectionId;
+                }
+              }
+            }
+          }
+        }
+
+        if (caseInsensitiveMatchId != null) {
+          return caseInsensitiveMatchId;
+        }
+        if (fuzzyMatchId != null) {
+          return fuzzyMatchId;
+        }
+        if (firstCollectionId != null) {
+          print(
+            'Collection "$collectionName" not found. Fallback to first collection.',
+          );
+          return firstCollectionId;
         }
       }
     } finally {
