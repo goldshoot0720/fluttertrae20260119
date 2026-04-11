@@ -123,7 +123,7 @@ class _AbsurdMarriageReasonScreenState
       backgroundColor: const Color(0xFFF5EFE3),
       appBar: AppBar(
         title: const Text(
-          '最瞎結婚理由',
+          '醉蝦結婚理由',
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [

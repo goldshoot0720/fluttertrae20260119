@@ -498,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen>
                     FilledButton.icon(
                       onPressed: _openAbsurdMarriageReason,
                       icon: const Icon(Icons.casino_rounded),
-                      label: const Text('最瞎結婚理由'),
+                      label: const Text('醉蝦結婚理由'),
                     ),
                     FilledButton.icon(
                       onPressed: _openPriceHistory,
