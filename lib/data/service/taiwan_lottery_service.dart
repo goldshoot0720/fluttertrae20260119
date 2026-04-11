@@ -109,6 +109,17 @@ class TaiwanLotteryService {
     );
   }
 
+  Future<List<LotteryDraw>> fetchDaily539Draws() async {
+    final now = DateTime.now();
+    final ranges = _buildMonthRanges(now);
+    return _fetchDraws(
+      endpoint: '/Lottery/Daily539Result',
+      listKey: 'daily539Res',
+      gameType: LotteryGameType.daily539,
+      ranges: ranges,
+    );
+  }
+
   List<LotteryTicketMatch> compareTickets(
     LotteryDraw draw,
     List<LotteryTicketSet> tickets,

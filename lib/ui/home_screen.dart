@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -11,6 +11,7 @@ import '../data/model/subscription_item.dart';
 import '../data/service/appwrite_service.dart';
 import 'absurd_marriage_reason_screen.dart';
 import 'battery_screen.dart';
+import 'drunken_shrimp_marriage_reason_screen.dart';
 import 'oil_price_screen.dart';
 import 'price_history_screen.dart';
 import 'us_debt_screen.dart';
@@ -29,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen>
   static const _sleepPromptDateKey = 'sleep_prompt_date';
   static const _sleepPromptCountKey = 'sleep_prompt_count';
   static const _sleepPromptLastAtKey = 'sleep_prompt_last_at';
-  static const _codeLineCount = 6858;
+  static const _codeLineCount = 7959;
 
   final AppwriteService _appwriteService = AppwriteService();
   List<SubscriptionItem> _subscriptions = [];
@@ -39,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen>
   Timer? _sleepPromptTimer;
   int _sleepPromptCount = 0;
   DateTime? _lastSleepPromptAt;
-  String _sleepPromptMessage = '尚未提示';
+  String _sleepPromptMessage = '撠?內';
 
   @override
   void initState() {
@@ -114,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen>
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showErrorSnackBar('載入訂閱資料失敗：$e');
+      _showErrorSnackBar('頛閮鞈?憭望?嚗?e');
     }
   }
 
@@ -148,6 +149,14 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _openAbsurdMarriageReason() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AbsurdMarriageReasonScreen()),
+    );
+  }
+
+  Future<void> _openDrunkenShrimpMarriageReason() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const DrunkenShrimpMarriageReasonScreen(),
+      ),
     );
   }
 
@@ -235,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   String _formatPromptMessage(DateTime time, int count) {
     final label = DateFormat('yyyy/MM/dd HH:mm').format(time);
-    return '睡眠提示 $label 第$count次';
+    return '?∠??內 $label 蝚?count甈?;
   }
 
   Set<int> _sleepPromptMinutes() {
@@ -263,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen>
         return DateFormat('HH:mm').format(time);
       }
     }
-    return '已結束';
+    return '撌脩???;
   }
 
   Future<void> _openBattery() async {
@@ -296,20 +305,20 @@ class _HomeScreenState extends State<HomeScreen>
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('刪除訂閱'),
+        title: const Text('?芷閮'),
         content: const Text(
-          '刪除後將無法復原，確定要移除這筆訂閱嗎？',
+          '?芷敺??⊥?敺拙?嚗Ⅱ摰?蝘駁??閮??',
           style: TextStyle(color: Color(0xFF8899AA)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: const Text('??'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF5252)),
-            child: const Text('刪除'),
+            child: const Text('?芷'),
           ),
         ],
       ),
@@ -323,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen>
       await _appwriteService.deleteSubscription(id);
       await _loadSubscriptions();
     } catch (e) {
-      _showErrorSnackBar('刪除訂閱失敗：$e');
+      _showErrorSnackBar('?芷閮憭望?嚗?e');
     }
   }
 
@@ -345,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen>
             }
             await _loadSubscriptions();
           } catch (e) {
-            _showErrorSnackBar(item == null ? '新增訂閱失敗：$e' : '更新訂閱失敗：$e');
+            _showErrorSnackBar(item == null ? '?啣?閮憭望?嚗?e' : '?湔閮憭望?嚗?e');
           }
         },
       ),
@@ -366,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen>
             }
             await _loadSubscriptions();
           } catch (e) {
-            _showErrorSnackBar('?啣?閮憭望?嚗?e');
+            _showErrorSnackBar('????殉?謘????e');
           }
         },
       ),
@@ -441,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen>
                 _buildFengBroAsciiArt(),
                 const SizedBox(height: 18),
                 const Text(
-                  '訂閱總覽',
+                  '閮蝮質汗',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -450,7 +459,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  '集中管理每月支出、扣款日期與重要提醒。',
+                  '?葉蝞∠?瘥??臬?甈暹????????,
                   style: TextStyle(
                     color: Color(0xFF9AA7C2),
                     fontSize: 14,
@@ -461,14 +470,14 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     _buildStatCard(
                       icon: Icons.subscriptions_rounded,
-                      label: '訂閱總數',
+                      label: '閮蝮賣',
                       value: '${_subscriptions.length}',
                       color: const Color(0xFF9E8CFF),
                     ),
                     const SizedBox(width: 12),
                     _buildStatCard(
                       icon: Icons.payments_rounded,
-                      label: '每月支出',
+                      label: '瘥??臬',
                       value: '\$$_totalMonthlyCost',
                       color: const Color(0xFF6FE7FF),
                     ),
@@ -477,7 +486,7 @@ class _HomeScreenState extends State<HomeScreen>
                       icon: expiringItems.isEmpty
                           ? Icons.check_circle_rounded
                           : Icons.notification_important_rounded,
-                      label: '三天內到期',
+                      label: '銝予?批??,
                       value: '${expiringItems.length}',
                       color: expiringItems.isEmpty
                           ? const Color(0xFF69F0AE)
@@ -493,17 +502,22 @@ class _HomeScreenState extends State<HomeScreen>
                     FilledButton.icon(
                       onPressed: _openBattery,
                       icon: const Icon(Icons.battery_full_rounded),
-                      label: const Text('電池選單'),
+                      label: const Text('?餅??詨'),
                     ),
                     FilledButton.icon(
                       onPressed: _openAbsurdMarriageReason,
                       icon: const Icon(Icons.casino_rounded),
+                      label: const Text('?蝯??'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _openDrunkenShrimpMarriageReason,
+                      icon: const Icon(Icons.favorite_rounded),
                       label: const Text('醉蝦結婚理由'),
                     ),
                     FilledButton.icon(
                       onPressed: _openPriceHistory,
                       icon: const Icon(Icons.query_stats_rounded),
-                      label: const Text('鋒兄比價'),
+                      label: const Text('??瘥'),
                     ),
                     FilledButton.icon(
                       onPressed: _openOilPrice,
@@ -518,7 +532,7 @@ class _HomeScreenState extends State<HomeScreen>
                     OutlinedButton.icon(
                       onPressed: _loadSubscriptions,
                       icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('重新整理'),
+                      label: const Text('??渡?'),
                     ),
                   ],
                 ),
@@ -541,7 +555,7 @@ class _HomeScreenState extends State<HomeScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '未來 3 天內有 ${expiringItems.length} 筆訂閱即將扣款，請留意付款方式與餘額。',
+                      '?芯? 3 憭拙??${expiringItems.length} 蝑??勗撠甈橘?隢???甈暹撘?擗???,
                       style: const TextStyle(
                         color: Color(0xFFFFD2CC),
                         fontSize: 13,
@@ -577,7 +591,7 @@ class _HomeScreenState extends State<HomeScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '首頁睡眠提示',
+            '擐??∠??內',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -586,16 +600,16 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            '今天日期：$today',
+            '隞予?交?嚗?today',
             style: const TextStyle(
               color: Color(0xFF9AA7C2),
               fontSize: 13,
             ),
           ),
           const SizedBox(height: 12),
-          _buildSleepRow('提示訊息', _sleepPromptMessage),
-          _buildSleepRow('提示次數', '$_sleepPromptCount 次'),
-          _buildSleepRow('下一次提示', nextLabel),
+          _buildSleepRow('?內閮', _sleepPromptMessage),
+          _buildSleepRow('?內甈⊥', '$_sleepPromptCount 甈?),
+          _buildSleepRow('銝?甈⊥?蝷?, nextLabel),
         ],
       ),
     );
@@ -768,7 +782,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 20),
             const Text(
-              '目前還沒有任何訂閱',
+              '?桀????遙雿???,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -777,7 +791,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 8),
             const Text(
-              '按下右下角按鈕，新增第一筆訂閱並開始追蹤扣款時間。',
+              '???喃?閫????啣?蝚砌?蝑??曹蒂??餈質馱??狡????,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -790,17 +804,17 @@ class _HomeScreenState extends State<HomeScreen>
               onPressed: () {
                 final draft = SubscriptionItem(
                   id: '',
-                  name: '食物',
+                  name: '憌',
                   site: '',
                   price: 0,
                   nextDate: DateTime.now(),
-                  note: '餐飲/外食',
+                  note: '擗ㄡ/憭?',
                   account: '',
                 );
                 _showCreateDialogWithPreset(draft);
               },
               icon: const Icon(Icons.restaurant_rounded),
-              label: const Text('新增食物訂閱'),
+              label: const Text('?啣?憌閮'),
             ),
           ],
         ),
@@ -813,7 +827,7 @@ class _HomeScreenState extends State<HomeScreen>
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Center(
         child: Text(
-          '程式碼行數：$_codeLineCount 行',
+          '蝔?蝣潸??賂?$_codeLineCount 銵?,
           style: TextStyle(
             color: Colors.white.withOpacity(0.55),
             fontSize: 12,
@@ -837,7 +851,7 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         actions: [
           IconButton(
-            tooltip: '重新整理',
+            tooltip: '??渡?',
             onPressed: _isLoading ? null : _loadSubscriptions,
             icon: _isLoading
                 ? const SizedBox(
@@ -878,7 +892,7 @@ class _HomeScreenState extends State<HomeScreen>
                           child: Row(
                             children: [
                               const Text(
-                                '訂閱清單',
+                                '閮皜',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -887,7 +901,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               const SizedBox(width: 10),
                               Text(
-                                '依最近扣款時間排序',
+                                '靘?餈甈暹???摨?,
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.white.withOpacity(0.55),
@@ -918,3 +932,5 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 }
+
+
