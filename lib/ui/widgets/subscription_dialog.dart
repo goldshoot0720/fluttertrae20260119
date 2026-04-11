@@ -14,7 +14,6 @@ class SubscriptionDialog extends StatefulWidget {
     required this.onSave,
     bool? isEditingOverride,
   }) : isEditing = isEditingOverride ?? item != null;
-  });
 
   @override
   State<SubscriptionDialog> createState() => _SubscriptionDialogState();
