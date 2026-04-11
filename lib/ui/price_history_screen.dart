@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -19,6 +19,7 @@ class PriceHistoryScreen extends StatefulWidget {
 class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
   final PriceHistoryService _service = PriceHistoryService();
   final TextEditingController _urlController = TextEditingController();
+  final TextEditingController _historyIdController = TextEditingController();
   final NumberFormat _currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
   final NumberFormat _decimalFormat = NumberFormat('0.00');
 
@@ -28,6 +29,7 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
   bool _isLoadingRecent = false;
   String _status = '等待查詢';
   int _days = 3650;
+  PriceSource _source = PriceSource.local;
 
   @override
   void initState() {
@@ -38,6 +40,7 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
   @override
   void dispose() {
     _urlController.dispose();
+    _historyIdController.dispose();
     super.dispose();
   }
 
@@ -60,25 +63,34 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
   }
 
   Future<void> _resolve() async {
-    final url = _urlController.text.trim();
-    if (url.isEmpty) {
-      setState(() => _status = '請先輸入商品連結');
-      return;
-    }
-
     setState(() {
       _isLoading = true;
       _status = '查詢中，請稍候...';
     });
     try {
-      final payload = await _service.resolve(url, _days);
+      PriceHistoryPayload payload;
+      if (_source == PriceSource.biggo) {
+        final historyId = _historyIdController.text.trim();
+        if (historyId.isEmpty) {
+          throw Exception('請輸入 BigGo history_id');
+        }
+        payload = await _service.resolveWithBigGo(historyId, _days);
+      } else {
+        final url = _urlController.text.trim();
+        if (url.isEmpty) {
+          throw Exception('請先輸入商品連結');
+        }
+        payload = await _service.resolve(url, _days);
+      }
       if (!mounted) return;
       setState(() {
         _payload = payload;
         _isLoading = false;
         _status = '完成';
       });
-      await _loadRecent();
+      if (_source == PriceSource.local) {
+        await _loadRecent();
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -104,6 +116,7 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
 
   void _clearAll() {
     _urlController.clear();
+    _historyIdController.clear();
     setState(() {
       _payload = null;
       _status = '已清空';
@@ -116,10 +129,10 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
       await _service.deleteRecent(index + 1);
       await _loadRecent();
       if (!mounted) return;
-      setState(() => _status = '已刪除最近連結');
+      setState(() => _status = '撌脣?斗?餈??');
     } catch (e) {
       if (!mounted) return;
-      setState(() => _status = '刪除失敗：$e');
+      setState(() => _status = '?芷憭望?嚗?e');
     }
   }
 
@@ -140,12 +153,12 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
       backgroundColor: const Color(0xFFF6F3EA),
       appBar: AppBar(
         title: const Text(
-          '鋒兄比價',
+          '??瘥',
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
           IconButton(
-            tooltip: '重新整理',
+            tooltip: '??渡?',
             onPressed: _isLoading ? null : _loadRecent,
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -234,7 +247,7 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '商品連結',
+            '資料來源',
             style: TextStyle(
               color: Color(0xFF61717D),
               fontSize: 13,
@@ -242,22 +255,80 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          TextField(
-            controller: _urlController,
-            decoration: InputDecoration(
-              hintText: '貼上 PChome / momo 商品連結',
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE4DDD0)),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('本機服務'),
+                selected: _source == PriceSource.local,
+                onSelected: (_) => setState(() => _source = PriceSource.local),
+                selectedColor: const Color(0xFFF3D5A8),
+                backgroundColor: const Color(0xFFF7EBDC),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE4DDD0)),
+              ChoiceChip(
+                label: const Text('BigGo API'),
+                selected: _source == PriceSource.biggo,
+                onSelected: (_) => setState(() => _source = PriceSource.biggo),
+                selectedColor: const Color(0xFFF3D5A8),
+                backgroundColor: const Color(0xFFF7EBDC),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_source == PriceSource.local) ...[
+            const Text(
+              '商品連結',
+              style: TextStyle(
+                color: Color(0xFF61717D),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _urlController,
+              decoration: InputDecoration(
+                hintText: '貼上 PChome / momo 商品連結',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE4DDD0)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE4DDD0)),
+                ),
+              ),
+            ),
+          ] else ...[
+            const Text(
+              'BigGo history_id',
+              style: TextStyle(
+                color: Color(0xFF61717D),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _historyIdController,
+              decoration: InputDecoration(
+                hintText: '輸入 BigGo history_id',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE4DDD0)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFE4DDD0)),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           Row(
             children: [
@@ -307,10 +378,11 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
                       )
                     : const Text('產生圖表'),
               ),
-              OutlinedButton(
-                onPressed: _pasteClipboard,
-                child: const Text('貼上剪貼簿'),
-              ),
+              if (_source == PriceSource.local)
+                OutlinedButton(
+                  onPressed: _pasteClipboard,
+                  child: const Text('貼上剪貼簿'),
+                ),
               OutlinedButton(
                 onPressed: _clearAll,
                 child: const Text('清空'),
@@ -344,7 +416,7 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _payload?.title.isNotEmpty == true ? _payload!.title : '尚未產生圖表',
+            _payload?.title.isNotEmpty == true ? _payload!.title : '撠?Ｙ??”',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -487,11 +559,11 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
                 final item = entry.value;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: InkWell(
-                    onTap: () {
-                      _urlController.text = item.url;
-                      setState(() => _status = '已帶入最近連結');
-                    },
+                    child: InkWell(
+                      onTap: () {
+                        _urlController.text = item.url;
+                        setState(() => _status = '已帶入最近連結');
+                      },
                     onLongPress: () => _deleteRecent(entry.key),
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
@@ -613,7 +685,7 @@ class _PriceHistoryChartPainter extends CustomPainter {
     if (payload == null || payload!.history.length < 2) {
       final textPainter = TextPainter(
         text: const TextSpan(
-          text: '尚未產生圖表',
+          text: '撠?Ｙ??”',
           style: TextStyle(
             color: Color(0xFF61717D),
             fontSize: 14,
@@ -695,3 +767,9 @@ class _PriceHistoryChartPainter extends CustomPainter {
     return oldDelegate.payload != payload;
   }
 }
+
+enum PriceSource {
+  local,
+  biggo,
+}
+

@@ -1,4 +1,5 @@
-﻿import 'dart:math';
+﻿
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -72,13 +73,6 @@ class _DrunkenShrimpMarriageReasonScreenState
     setState(() {
       _mode = mode;
       _packIndex = -1;
-      if (mode != Daily539Mode.single) {
-        for (final controller in _controllers) {
-          if (controller.text == '包牌') {
-            controller.clear();
-          }
-        }
-      }
     });
   }
 
@@ -140,7 +134,6 @@ class _DrunkenShrimpMarriageReasonScreenState
         setState(() => _isLoading = false);
       }
     }
-  }
   }
 
   Daily539Selection _parseSelection() {
@@ -209,7 +202,7 @@ class _DrunkenShrimpMarriageReasonScreenState
 
     final rows = <Daily539ResultRow>[];
     for (final draw in _draws) {
-      final numbers = draw.mainNumbers..sort();
+      final numbers = [...draw.mainNumbers]..sort();
       if (selection.mode == Daily539Mode.single && selection.packIndex == -1) {
         final hits = numbers.where(selection.selected.contains).toList()..sort();
         final prize = _prizeTable[hits.length] ?? 0;
@@ -813,7 +806,7 @@ class _DrunkenShrimpMarriageReasonScreenState
 
   Widget _buildResultRow(Daily539ResultRow row) {
     final draw = row.draw;
-    final numbers = draw.mainNumbers..sort();
+    final numbers = [...draw.mainNumbers]..sort();
     final hitSet = row.hits.toSet();
     final packSet = row.packCovered.toSet();
     final prizeColor =

@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen>
   static const _sleepPromptDateKey = 'sleep_prompt_date';
   static const _sleepPromptCountKey = 'sleep_prompt_count';
   static const _sleepPromptLastAtKey = 'sleep_prompt_last_at';
-  static const _codeLineCount = 7959;
+  static const _codeLineCount = 8169;
 
   final AppwriteService _appwriteService = AppwriteService();
   List<SubscriptionItem> _subscriptions = [];
@@ -244,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   String _formatPromptMessage(DateTime time, int count) {
     final label = DateFormat('yyyy/MM/dd HH:mm').format(time);
-    return '?∠??內 $label 蝚?count甈?;
+    return '睡眠提示 $label 第$count次';
   }
 
   Set<int> _sleepPromptMinutes() {
@@ -272,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen>
         return DateFormat('HH:mm').format(time);
       }
     }
-    return '撌脩???;
+    return '已結束';
   }
 
   Future<void> _openBattery() async {
@@ -450,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen>
                 _buildFengBroAsciiArt(),
                 const SizedBox(height: 18),
                 const Text(
-                  '閮蝮質汗',
+                  '訂閱總覽',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -459,7 +459,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  '?葉蝞∠?瘥??臬?甈暹????????,
+                  '同步最新扣款與提醒，整理每月支出。',
                   style: TextStyle(
                     color: Color(0xFF9AA7C2),
                     fontSize: 14,
@@ -470,14 +470,14 @@ class _HomeScreenState extends State<HomeScreen>
                   children: [
                     _buildStatCard(
                       icon: Icons.subscriptions_rounded,
-                      label: '閮蝮賣',
+                      label: '訂閱總數',
                       value: '${_subscriptions.length}',
                       color: const Color(0xFF9E8CFF),
                     ),
                     const SizedBox(width: 12),
                     _buildStatCard(
                       icon: Icons.payments_rounded,
-                      label: '瘥??臬',
+                      label: '每月支出',
                       value: '\$$_totalMonthlyCost',
                       color: const Color(0xFF6FE7FF),
                     ),
@@ -486,7 +486,7 @@ class _HomeScreenState extends State<HomeScreen>
                       icon: expiringItems.isEmpty
                           ? Icons.check_circle_rounded
                           : Icons.notification_important_rounded,
-                      label: '銝予?批??,
+                      label: '即將扣款',
                       value: '${expiringItems.length}',
                       color: expiringItems.isEmpty
                           ? const Color(0xFF69F0AE)
@@ -502,12 +502,12 @@ class _HomeScreenState extends State<HomeScreen>
                     FilledButton.icon(
                       onPressed: _openBattery,
                       icon: const Icon(Icons.battery_full_rounded),
-                      label: const Text('?餅??詨'),
+                      label: const Text('電池選單'),
                     ),
                     FilledButton.icon(
                       onPressed: _openAbsurdMarriageReason,
                       icon: const Icon(Icons.casino_rounded),
-                      label: const Text('?蝯??'),
+                      label: const Text('最瞎結婚理由'),
                     ),
                     FilledButton.icon(
                       onPressed: _openDrunkenShrimpMarriageReason,
@@ -517,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen>
                     FilledButton.icon(
                       onPressed: _openPriceHistory,
                       icon: const Icon(Icons.query_stats_rounded),
-                      label: const Text('??瘥'),
+                      label: const Text('鋒兄比價'),
                     ),
                     FilledButton.icon(
                       onPressed: _openOilPrice,
@@ -532,7 +532,7 @@ class _HomeScreenState extends State<HomeScreen>
                     OutlinedButton.icon(
                       onPressed: _loadSubscriptions,
                       icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('??渡?'),
+                      label: const Text('重新整理'),
                     ),
                   ],
                 ),
@@ -555,7 +555,7 @@ class _HomeScreenState extends State<HomeScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '?芯? 3 憭拙??${expiringItems.length} 蝑??勗撠甈橘?隢???甈暹撘?擗???,
+                      '未來 3 天內有 ${expiringItems.length} 筆訂閱即將扣款，請留意付款方式與餘額。',
                       style: const TextStyle(
                         color: Color(0xFFFFD2CC),
                         fontSize: 13,
@@ -591,7 +591,7 @@ class _HomeScreenState extends State<HomeScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '擐??∠??內',
+            '首頁睡眠提示',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -600,16 +600,16 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            '隞予?交?嚗?today',
+            '今日日期：$today',
             style: const TextStyle(
               color: Color(0xFF9AA7C2),
               fontSize: 13,
             ),
           ),
           const SizedBox(height: 12),
-          _buildSleepRow('?內閮', _sleepPromptMessage),
-          _buildSleepRow('?內甈⊥', '$_sleepPromptCount 甈?),
-          _buildSleepRow('銝?甈⊥?蝷?, nextLabel),
+          _buildSleepRow('提示訊息', _sleepPromptMessage),
+          _buildSleepRow('提示次數', '$_sleepPromptCount 次'),
+          _buildSleepRow('下一次提示', nextLabel),
         ],
       ),
     );
@@ -782,7 +782,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 20),
             const Text(
-              '?桀????遙雿???,
+              '目前還沒有任何訂閱',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -791,7 +791,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 8),
             const Text(
-              '???喃?閫????啣?蝚砌?蝑??曹蒂??餈質馱??狡????,
+              '按下右下角按鈕，新增第一筆訂閱並開始追蹤扣款時間。',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -825,9 +825,9 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildCodeLineFooter() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      child: Center(
-        child: Text(
-          '蝔?蝣潸??賂?$_codeLineCount 銵?,
+        child: Center(
+          child: Text(
+          '程式碼行數：$_codeLineCount 行',
           style: TextStyle(
             color: Colors.white.withOpacity(0.55),
             fontSize: 12,
@@ -901,7 +901,7 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               const SizedBox(width: 10),
                               Text(
-                                '靘?餈甈暹???摨?,
+                                '點擊卡片查看或編輯訂閱內容。',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.white.withOpacity(0.55),
