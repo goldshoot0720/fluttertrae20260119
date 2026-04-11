@@ -69,18 +69,12 @@ class AppwriteService {
     return _getSubscriptionCollectionIdWithFallback();
   }
 
-  Future<String> _getSubscriptionCollectionIdWithFallback({
-    bool allowConfiguredId = true,
-  }) async {
-    try {
-      return await _getCollectionIdByName(subscriptionCollectionName);
-    } catch (_) {
-      if (allowConfiguredId &&
-          AppwriteConfig.subscriptionCollectionId.trim().isNotEmpty) {
-        return AppwriteConfig.subscriptionCollectionId;
-      }
-      rethrow;
+  Future<String> _getSubscriptionCollectionIdWithFallback() async {
+    final fixedId = AppwriteConfig.subscriptionCollectionId.trim();
+    if (fixedId.isNotEmpty) {
+      return fixedId;
     }
+    return _getCollectionIdByName(subscriptionCollectionName);
   }
 
   Future<String> _resolveSubscriptionCollectionIdFromName() {
