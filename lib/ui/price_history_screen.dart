@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -619,7 +620,7 @@ class _PriceHistoryChartPainter extends CustomPainter {
             fontWeight: FontWeight.w600,
           ),
         ),
-        textDirection: TextDirection.ltr,
+        textDirection: ui.TextDirection.ltr,
       )..layout();
       textPainter.paint(canvas, const Offset(16, 16));
       return;

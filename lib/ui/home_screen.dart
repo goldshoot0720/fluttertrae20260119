@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen>
   static const _sleepPromptDateKey = 'sleep_prompt_date';
   static const _sleepPromptCountKey = 'sleep_prompt_count';
   static const _sleepPromptLastAtKey = 'sleep_prompt_last_at';
-  static const _codeLineCount = 6857;
+  static const _codeLineCount = 6858;
 
   final AppwriteService _appwriteService = AppwriteService();
   List<SubscriptionItem> _subscriptions = [];
