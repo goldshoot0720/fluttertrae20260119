@@ -71,12 +71,16 @@ class AppwriteService {
 
   Future<String> _getSubscriptionCollectionIdWithFallback({
     bool allowConfiguredId = true,
-  }) {
-    if (allowConfiguredId &&
-        AppwriteConfig.subscriptionCollectionId.trim().isNotEmpty) {
-      return Future.value(AppwriteConfig.subscriptionCollectionId);
+  }) async {
+    try {
+      return await _getCollectionIdByName(subscriptionCollectionName);
+    } catch (_) {
+      if (allowConfiguredId &&
+          AppwriteConfig.subscriptionCollectionId.trim().isNotEmpty) {
+        return AppwriteConfig.subscriptionCollectionId;
+      }
+      rethrow;
     }
-    return _getCollectionIdByName(subscriptionCollectionName);
   }
 
   Future<String> _resolveSubscriptionCollectionIdFromName() {
@@ -87,8 +91,16 @@ class AppwriteService {
   }
 
   Future<String> _getCollectionIdByName(String collectionName) {
-    return _collectionIdFutures[collectionName] ??=
-        _resolveCollectionIdByName(collectionName);
+    final existing = _collectionIdFutures[collectionName];
+    if (existing != null) {
+      return existing;
+    }
+    final future = _resolveCollectionIdByName(collectionName);
+    _collectionIdFutures[collectionName] = future;
+    return future.catchError((error) {
+      _collectionIdFutures.remove(collectionName);
+      throw error;
+    });
   }
 
   Future<String> _resolveCollectionIdByName(String collectionName) async {
@@ -243,6 +255,10 @@ class AppwriteService {
       });
     } catch (e) {
       print('Error getting subscriptions: $e');
+      final message = e.toString().toLowerCase();
+      if (message.contains('collection') && message.contains('not found')) {
+        return <SubscriptionItem>[];
+      }
       rethrow;
     }
   }

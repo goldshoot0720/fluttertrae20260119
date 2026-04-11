@@ -344,6 +344,27 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  void _showCreateDialogWithPreset(SubscriptionItem draft) {
+    showDialog(
+      context: context,
+      builder: (context) => SubscriptionDialog(
+        item: draft,
+        isEditingOverride: false,
+        onSave: (newItem) async {
+          try {
+            await _appwriteService.addSubscription(newItem);
+            if (mounted) {
+              Navigator.pop(context);
+            }
+            await _loadSubscriptions();
+          } catch (e) {
+            _showErrorSnackBar('?啣?閮憭望?嚗?e');
+          }
+        },
+      ),
+    );
+  }
+
   Widget _buildStatCard({
     required IconData icon,
     required String label,
@@ -750,6 +771,23 @@ class _HomeScreenState extends State<HomeScreen>
                 color: Color(0xFF8899AA),
                 height: 1.5,
               ),
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: () {
+                final draft = SubscriptionItem(
+                  id: '',
+                  name: '食物',
+                  site: '',
+                  price: 0,
+                  nextDate: DateTime.now(),
+                  note: '餐飲/外食',
+                  account: '',
+                );
+                _showCreateDialogWithPreset(draft);
+              },
+              icon: const Icon(Icons.restaurant_rounded),
+              label: const Text('新增食物訂閱'),
             ),
           ],
         ),

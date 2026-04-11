@@ -6,11 +6,14 @@ import '../../data/model/subscription_item.dart';
 class SubscriptionDialog extends StatefulWidget {
   final SubscriptionItem? item;
   final Function(SubscriptionItem) onSave;
+  final bool isEditing;
 
   const SubscriptionDialog({
     super.key,
     this.item,
     required this.onSave,
+    bool? isEditingOverride,
+  }) : isEditing = isEditingOverride ?? item != null;
   });
 
   @override
@@ -51,7 +54,7 @@ class _SubscriptionDialogState extends State<SubscriptionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.item != null;
+    final isEditing = widget.isEditing;
 
     return Dialog(
       backgroundColor: const Color(0xFF1A1A2E),
