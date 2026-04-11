@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen>
   static const _sleepPromptDateKey = 'sleep_prompt_date';
   static const _sleepPromptCountKey = 'sleep_prompt_count';
   static const _sleepPromptLastAtKey = 'sleep_prompt_last_at';
+  static const _codeLineCount = 5998;
 
   final AppwriteService _appwriteService = AppwriteService();
   List<SubscriptionItem> _subscriptions = [];
@@ -795,6 +796,22 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildCodeLineFooter() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: Center(
+        child: Text(
+          '程式碼行數：$_codeLineCount 行',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.55),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -837,6 +854,7 @@ class _HomeScreenState extends State<HomeScreen>
                         _buildSummarySection(),
                         const SizedBox(height: 40),
                         _buildEmptyState(),
+                        _buildCodeLineFooter(),
                       ],
                     )
                   : ListView(
@@ -874,7 +892,9 @@ class _HomeScreenState extends State<HomeScreen>
                                 onDelete: () => _deleteSubscription(entry.value.id),
                               ),
                             ),
-                        const SizedBox(height: 100),
+                        const SizedBox(height: 60),
+                        _buildCodeLineFooter(),
+                        const SizedBox(height: 20),
                       ],
                     ),
             ),
