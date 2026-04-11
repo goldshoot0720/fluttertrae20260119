@@ -12,6 +12,7 @@ import '../data/service/appwrite_service.dart';
 import 'absurd_marriage_reason_screen.dart';
 import 'battery_screen.dart';
 import 'oil_price_screen.dart';
+import 'price_history_screen.dart';
 import 'us_debt_screen.dart';
 import 'widgets/subscription_card.dart';
 import 'widgets/subscription_dialog.dart';
@@ -28,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen>
   static const _sleepPromptDateKey = 'sleep_prompt_date';
   static const _sleepPromptCountKey = 'sleep_prompt_count';
   static const _sleepPromptLastAtKey = 'sleep_prompt_last_at';
-  static const _codeLineCount = 6017;
+  static const _codeLineCount = 6857;
 
   final AppwriteService _appwriteService = AppwriteService();
   List<SubscriptionItem> _subscriptions = [];
@@ -147,6 +148,12 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _openAbsurdMarriageReason() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AbsurdMarriageReasonScreen()),
+    );
+  }
+
+  Future<void> _openPriceHistory() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PriceHistoryScreen()),
     );
   }
 
@@ -492,6 +499,11 @@ class _HomeScreenState extends State<HomeScreen>
                       onPressed: _openAbsurdMarriageReason,
                       icon: const Icon(Icons.casino_rounded),
                       label: const Text('最瞎結婚理由'),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _openPriceHistory,
+                      icon: const Icon(Icons.query_stats_rounded),
+                      label: const Text('鋒兄比價'),
                     ),
                     FilledButton.icon(
                       onPressed: _openOilPrice,
