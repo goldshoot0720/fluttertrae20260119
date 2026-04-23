@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -12,8 +12,8 @@ import '../data/service/appwrite_service.dart';
 import 'absurd_marriage_reason_screen.dart';
 import 'battery_screen.dart';
 import 'drunken_shrimp_marriage_reason_screen.dart';
+import 'feng_bro_tools_screen.dart';
 import 'oil_price_screen.dart';
-import 'price_history_screen.dart';
 import 'us_debt_screen.dart';
 import 'widgets/subscription_card.dart';
 import 'widgets/subscription_dialog.dart';
@@ -82,7 +82,9 @@ class _HomeScreenState extends State<HomeScreen>
 
     await systemTray.initSystemTray(
       title: 'Subscription Manager',
-      iconPath: Platform.isWindows ? r'assets\app_icon.ico' : 'assets/app_icon.png',
+      iconPath: Platform.isWindows
+          ? r'assets\app_icon.ico'
+          : 'assets/app_icon.png',
     );
 
     final menu = Menu();
@@ -135,15 +137,15 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openUsDebt() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const USDebtScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const USDebtScreen()));
   }
 
   Future<void> _openOilPrice() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const OilPriceScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const OilPriceScreen()));
   }
 
   Future<void> _openAbsurdMarriageReason() async {
@@ -160,10 +162,10 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Future<void> _openPriceHistory() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PriceHistoryScreen()),
-    );
+  Future<void> _openFengBroTools() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const FengBroToolsScreen()));
   }
 
   Future<void> _initSleepPromptState() async {
@@ -180,14 +182,14 @@ class _HomeScreenState extends State<HomeScreen>
     _sleepPromptCount = prefs.getInt(_sleepPromptCountKey) ?? 0;
     final lastAtMillis = prefs.getInt(_sleepPromptLastAtKey);
     if (lastAtMillis != null) {
-      _lastSleepPromptAt =
-          DateTime.fromMillisecondsSinceEpoch(lastAtMillis);
-      _sleepPromptMessage =
-          _formatPromptMessage(_lastSleepPromptAt!, _sleepPromptCount);
+      _lastSleepPromptAt = DateTime.fromMillisecondsSinceEpoch(lastAtMillis);
+      _sleepPromptMessage = _formatPromptMessage(
+        _lastSleepPromptAt!,
+        _sleepPromptCount,
+      );
     }
 
-    _sleepPromptTimer ??=
-        Timer.periodic(const Duration(seconds: 20), (_) {
+    _sleepPromptTimer ??= Timer.periodic(const Duration(seconds: 20), (_) {
       _checkSleepPrompt();
     });
   }
@@ -220,10 +222,7 @@ class _HomeScreenState extends State<HomeScreen>
     _lastSleepPromptAt = now;
     _sleepPromptMessage = _formatPromptMessage(now, _sleepPromptCount);
     await prefs.setInt(_sleepPromptCountKey, _sleepPromptCount);
-    await prefs.setInt(
-      _sleepPromptLastAtKey,
-      now.millisecondsSinceEpoch,
-    );
+    await prefs.setInt(_sleepPromptLastAtKey, now.millisecondsSinceEpoch);
 
     if (!mounted) return;
     setState(() {});
@@ -276,16 +275,20 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openBattery() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const BatteryScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const BatteryScreen()));
   }
 
   List<SubscriptionItem> _getExpiringItems() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     return _subscriptions.where((item) {
-      final itemDate = DateTime(item.nextDate.year, item.nextDate.month, item.nextDate.day);
+      final itemDate = DateTime(
+        item.nextDate.year,
+        item.nextDate.month,
+        item.nextDate.day,
+      );
       final diff = itemDate.difference(today).inDays;
       return diff >= 0 && diff <= 3;
     }).toList();
@@ -317,7 +320,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF5252)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF5252),
+            ),
             child: const Text('?芷'),
           ),
         ],
@@ -460,10 +465,7 @@ class _HomeScreenState extends State<HomeScreen>
                 const SizedBox(height: 6),
                 const Text(
                   '同步最新扣款與提醒，整理每月支出。',
-                  style: TextStyle(
-                    color: Color(0xFF9AA7C2),
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Color(0xFF9AA7C2), fontSize: 14),
                 ),
                 const SizedBox(height: 18),
                 Row(
@@ -515,9 +517,9 @@ class _HomeScreenState extends State<HomeScreen>
                       label: const Text('醉蝦結婚理由'),
                     ),
                     FilledButton.icon(
-                      onPressed: _openPriceHistory,
-                      icon: const Icon(Icons.query_stats_rounded),
-                      label: const Text('鋒兄比價'),
+                      onPressed: _openFengBroTools,
+                      icon: const Icon(Icons.construction_rounded),
+                      label: const Text('鋒兄工具'),
                     ),
                     FilledButton.icon(
                       onPressed: _openOilPrice,
@@ -551,7 +553,10 @@ class _HomeScreenState extends State<HomeScreen>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF8A80)),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFFF8A80),
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -565,7 +570,10 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   IconButton(
                     onPressed: () => setState(() => _bannerDismissed = true),
-                    icon: const Icon(Icons.close_rounded, color: Color(0xFFAA8891)),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Color(0xFFAA8891),
+                    ),
                   ),
                 ],
               ),
@@ -601,10 +609,7 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: 8),
           Text(
             '今日日期：$today',
-            style: const TextStyle(
-              color: Color(0xFF9AA7C2),
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Color(0xFF9AA7C2), fontSize: 13),
           ),
           const SizedBox(height: 12),
           _buildSleepRow('提示訊息', _sleepPromptMessage),
@@ -666,7 +671,11 @@ class _HomeScreenState extends State<HomeScreen>
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF0B1023), Color(0xFF111936), Color(0xFF0C152B)],
+                colors: [
+                  Color(0xFF0B1023),
+                  Color(0xFF111936),
+                  Color(0xFF0C152B),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -685,7 +694,10 @@ class _HomeScreenState extends State<HomeScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF172445),
                     borderRadius: BorderRadius.circular(999),
@@ -714,7 +726,9 @@ class _HomeScreenState extends State<HomeScreen>
                       fontWeight: FontWeight.w700,
                       shadows: [
                         Shadow(
-                          color: const Color(0xFF5DFFD1).withOpacity(0.55 + glow),
+                          color: const Color(
+                            0xFF5DFFD1,
+                          ).withOpacity(0.55 + glow),
                           blurRadius: 14,
                         ),
                       ],
@@ -736,7 +750,10 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF13203E),
                         borderRadius: BorderRadius.circular(999),
@@ -825,8 +842,8 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildCodeLineFooter() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        child: Center(
-          child: Text(
+      child: Center(
+        child: Text(
           '程式碼行數：$_codeLineCount 行',
           style: TextStyle(
             color: Colors.white.withOpacity(0.55),
@@ -911,13 +928,13 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                         ..._subscriptions.asMap().entries.map(
-                              (entry) => SubscriptionCard(
-                                item: entry.value,
-                                index: entry.key,
-                                onEdit: () => _showEditDialog(entry.value),
-                                onDelete: () => _deleteSubscription(entry.value.id),
-                              ),
-                            ),
+                          (entry) => SubscriptionCard(
+                            item: entry.value,
+                            index: entry.key,
+                            onEdit: () => _showEditDialog(entry.value),
+                            onDelete: () => _deleteSubscription(entry.value.id),
+                          ),
+                        ),
                         const SizedBox(height: 60),
                         _buildCodeLineFooter(),
                         const SizedBox(height: 20),
@@ -932,5 +949,3 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 }
-
-
