@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen>
   Timer? _sleepPromptTimer;
   int _sleepPromptCount = 0;
   DateTime? _lastSleepPromptAt;
-  String _sleepPromptMessage = '撠?內';
+  String _sleepPromptMessage = '尚未提示';
 
   @override
   void initState() {
@@ -117,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen>
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showErrorSnackBar('頛閮鞈?憭望?嚗?e');
+      _showErrorSnackBar('讀取訂閱資料失敗：$e');
     }
   }
 
@@ -308,9 +308,9 @@ class _HomeScreenState extends State<HomeScreen>
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('?芷閮'),
+        title: const Text('刪除訂閱'),
         content: const Text(
-          '?芷敺??⊥?敺拙?嚗Ⅱ摰?蝘駁??閮??',
+          '確定要刪除這筆訂閱嗎？此動作無法復原。',
           style: TextStyle(color: Color(0xFF8899AA)),
         ),
         actions: [
@@ -323,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF5252),
             ),
-            child: const Text('?芷'),
+            child: const Text('刪除'),
           ),
         ],
       ),
@@ -337,7 +337,7 @@ class _HomeScreenState extends State<HomeScreen>
       await _appwriteService.deleteSubscription(id);
       await _loadSubscriptions();
     } catch (e) {
-      _showErrorSnackBar('?芷閮憭望?嚗?e');
+      _showErrorSnackBar('刪除訂閱失敗：$e');
     }
   }
 
@@ -359,7 +359,7 @@ class _HomeScreenState extends State<HomeScreen>
             }
             await _loadSubscriptions();
           } catch (e) {
-            _showErrorSnackBar(item == null ? '?啣?閮憭望?嚗?e' : '?湔閮憭望?嚗?e');
+            _showErrorSnackBar(item == null ? '新增訂閱失敗：$e' : '更新訂閱失敗：$e');
           }
         },
       ),
@@ -380,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen>
             }
             await _loadSubscriptions();
           } catch (e) {
-            _showErrorSnackBar('????殉?謘????e');
+            _showErrorSnackBar('新增訂閱失敗：$e');
           }
         },
       ),
@@ -825,13 +825,13 @@ class _HomeScreenState extends State<HomeScreen>
                   site: '',
                   price: 0,
                   nextDate: DateTime.now(),
-                  note: '擗ㄡ/憭?',
+                  note: '備註/提醒',
                   account: '',
                 );
                 _showCreateDialogWithPreset(draft);
               },
               icon: const Icon(Icons.restaurant_rounded),
-              label: const Text('?啣?憌閮'),
+              label: const Text('新增訂閱'),
             ),
           ],
         ),
@@ -868,7 +868,7 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         actions: [
           IconButton(
-            tooltip: '??渡?',
+            tooltip: '重新整理',
             onPressed: _isLoading ? null : _loadSubscriptions,
             icon: _isLoading
                 ? const SizedBox(
@@ -909,7 +909,7 @@ class _HomeScreenState extends State<HomeScreen>
                           child: Row(
                             children: [
                               const Text(
-                                '閮皜',
+                                '訂閱清單',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,

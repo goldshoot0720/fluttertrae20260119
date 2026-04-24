@@ -1,4 +1,4 @@
-﻿import 'dart:math';
+import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -20,7 +20,10 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
   final PriceHistoryService _service = PriceHistoryService();
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _historyIdController = TextEditingController();
-  final NumberFormat _currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+  final NumberFormat _currencyFormat = NumberFormat.currency(
+    symbol: '\$',
+    decimalDigits: 0,
+  );
   final NumberFormat _decimalFormat = NumberFormat('0.00');
 
   PriceHistoryPayload? _payload;
@@ -129,10 +132,10 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
       await _service.deleteRecent(index + 1);
       await _loadRecent();
       if (!mounted) return;
-      setState(() => _status = '撌脣?斗?餈??');
+      setState(() => _status = '已刪除最近連結');
     } catch (e) {
       if (!mounted) return;
-      setState(() => _status = '?芷憭望?嚗?e');
+      setState(() => _status = '刪除失敗：$e');
     }
   }
 
@@ -153,12 +156,12 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
       backgroundColor: const Color(0xFFF6F3EA),
       appBar: AppBar(
         title: const Text(
-          '??瘥',
+          '鋒兄比價',
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
           IconButton(
-            tooltip: '??渡?',
+            tooltip: '重新整理',
             onPressed: _isLoading ? null : _loadRecent,
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -207,7 +210,11 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
               color: const Color(0xFF2D8A62),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(Icons.query_stats_rounded, color: Colors.white, size: 26),
+            child: const Icon(
+              Icons.query_stats_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
           ),
           const SizedBox(width: 14),
           const Expanded(
@@ -368,7 +375,10 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
                 onPressed: _isLoading ? null : _resolve,
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFFD9702F),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
                 ),
                 child: _isLoading
                     ? const SizedBox(
@@ -383,10 +393,7 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
                   onPressed: _pasteClipboard,
                   child: const Text('貼上剪貼簿'),
                 ),
-              OutlinedButton(
-                onPressed: _clearAll,
-                child: const Text('清空'),
-              ),
+              OutlinedButton(onPressed: _clearAll, child: const Text('清空')),
               OutlinedButton.icon(
                 onPressed: _payload == null ? null : _openSourceUrl,
                 icon: const Icon(Icons.open_in_new_rounded, size: 16),
@@ -395,10 +402,7 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            _status,
-            style: const TextStyle(color: Color(0xFF61717D)),
-          ),
+          Text(_status, style: const TextStyle(color: Color(0xFF61717D))),
         ],
       ),
     );
@@ -480,7 +484,10 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
                 _buildStat('最低價格', _currencyFormat.format(stats.lowestPrice)),
                 _buildStat('平均價格', _decimalFormat.format(stats.averagePrice)),
                 _buildStat('中位數價格', _decimalFormat.format(stats.medianPrice)),
-                _buildStat('最新減最低', _currencyFormat.format(stats.latestMinusLowest)),
+                _buildStat(
+                  '最新減最低',
+                  _currencyFormat.format(stats.latestMinusLowest),
+                ),
                 _buildStat(
                   '最新與最低間隔',
                   '${stats.interval.years} 年 ${stats.interval.months} 個月 ${stats.interval.days} 天',
@@ -549,21 +556,18 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
           if (_isLoadingRecent)
             const Center(child: CircularProgressIndicator())
           else if (_recent.isEmpty)
-            const Text(
-              '目前還沒有最近連結。',
-              style: TextStyle(color: Color(0xFF61717D)),
-            )
+            const Text('目前還沒有最近連結。', style: TextStyle(color: Color(0xFF61717D)))
           else
             Column(
               children: _recent.asMap().entries.map((entry) {
                 final item = entry.value;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                    child: InkWell(
-                      onTap: () {
-                        _urlController.text = item.url;
-                        setState(() => _status = '已帶入最近連結');
-                      },
+                  child: InkWell(
+                    onTap: () {
+                      _urlController.text = item.url;
+                      setState(() => _status = '已帶入最近連結');
+                    },
                     onLongPress: () => _deleteRecent(entry.key),
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
@@ -578,7 +582,9 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            item.matchedTitle.isNotEmpty ? item.matchedTitle : item.title,
+                            item.matchedTitle.isNotEmpty
+                                ? item.matchedTitle
+                                : item.title,
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF24323D),
@@ -606,7 +612,9 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
 
   Widget _buildHistoryCard() {
     final history = _payload?.history ?? [];
-    final viewHistory = history.length > 30 ? history.sublist(history.length - 30) : history;
+    final viewHistory = history.length > 30
+        ? history.sublist(history.length - 30)
+        : history;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -628,15 +636,14 @@ class _PriceHistoryScreenState extends State<PriceHistoryScreen> {
           ),
           const SizedBox(height: 12),
           if (history.isEmpty)
-            const Text(
-              '尚未載入歷史資料。',
-              style: TextStyle(color: Color(0xFF61717D)),
-            )
+            const Text('尚未載入歷史資料。', style: TextStyle(color: Color(0xFF61717D)))
           else
             Column(
               children: viewHistory.map((point) {
-                final time = DateTime.fromMillisecondsSinceEpoch(point.x, isUtc: true)
-                    .toLocal();
+                final time = DateTime.fromMillisecondsSinceEpoch(
+                  point.x,
+                  isUtc: true,
+                ).toLocal();
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
@@ -728,7 +735,11 @@ class _PriceHistoryChartPainter extends CustomPainter {
       ..strokeWidth = 1;
     for (var i = 0; i <= 4; i++) {
       final y = top + (height / 4) * i;
-      canvas.drawLine(Offset(left, y), Offset(size.width - right, y), gridPaint);
+      canvas.drawLine(
+        Offset(left, y),
+        Offset(size.width - right, y),
+        gridPaint,
+      );
     }
 
     final path = Path();
@@ -768,8 +779,4 @@ class _PriceHistoryChartPainter extends CustomPainter {
   }
 }
 
-enum PriceSource {
-  local,
-  biggo,
-}
-
+enum PriceSource { local, biggo }
