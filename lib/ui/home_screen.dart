@@ -189,8 +189,13 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
 
-    _sleepPromptTimer ??= Timer.periodic(const Duration(seconds: 20), (_) {
-      _checkSleepPrompt();
+    _sleepPromptTimer ??= Timer.periodic(const Duration(seconds: 20), (
+      _,
+    ) async {
+      await _checkSleepPrompt();
+      if (mounted) {
+        setState(() {});
+      }
     });
   }
 
@@ -272,6 +277,31 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
     return '已結束';
+  }
+
+  _SleepWarningStyle? _currentSleepWarningStyle() {
+    final hour = DateTime.now().hour;
+    if (hour >= 0 && hour <= 2) {
+      return const _SleepWarningStyle(
+        backgroundColor: Color(0xFFFFF3C4),
+        borderColor: Color(0xFFF59E0B),
+        iconColor: Color(0xFFD97706),
+        titleColor: Color(0xFF7C2D12),
+        messageColor: Color(0xFF92400E),
+        label: '黃色警告',
+      );
+    }
+    if (hour >= 3 && hour <= 6) {
+      return const _SleepWarningStyle(
+        backgroundColor: Color(0xFFFFDAD6),
+        borderColor: Color(0xFFEF4444),
+        iconColor: Color(0xFFDC2626),
+        titleColor: Color(0xFF7F1D1D),
+        messageColor: Color(0xFF991B1B),
+        label: '紅色警告',
+      );
+    }
+    return null;
   }
 
   Future<void> _openBattery() async {
@@ -431,11 +461,16 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildSummarySection() {
     final expiringItems = _getExpiringItems();
+    final sleepWarningStyle = _currentSleepWarningStyle();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       child: Column(
         children: [
+          if (sleepWarningStyle != null) ...[
+            _buildSleepWarningBanner(sleepWarningStyle),
+            const SizedBox(height: 14),
+          ],
           _buildSleepPromptCard(),
           const SizedBox(height: 14),
           Container(
@@ -579,6 +614,49 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSleepWarningBanner(_SleepWarningStyle style) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: style.backgroundColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: style.borderColor, width: 1.4),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(Icons.bedtime_rounded, color: style.iconColor, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  style.label,
+                  style: TextStyle(
+                    color: style.titleColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '請入睡',
+                  style: TextStyle(
+                    color: style.messageColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -948,4 +1026,22 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
+}
+
+class _SleepWarningStyle {
+  final Color backgroundColor;
+  final Color borderColor;
+  final Color iconColor;
+  final Color titleColor;
+  final Color messageColor;
+  final String label;
+
+  const _SleepWarningStyle({
+    required this.backgroundColor,
+    required this.borderColor,
+    required this.iconColor,
+    required this.titleColor,
+    required this.messageColor,
+    required this.label,
+  });
 }
