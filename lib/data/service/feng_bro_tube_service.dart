@@ -17,7 +17,7 @@ class FengBroTubeService {
     ),
     FengBroTubeChannel(
       id: 'henren778',
-      name: '很仁 778',
+      name: '一个狠人',
       url: 'https://www.youtube.com/@henren778',
     ),
     FengBroTubeChannel(

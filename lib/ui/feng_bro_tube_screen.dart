@@ -229,6 +229,8 @@ class _FengBroTubeScreenState extends State<FengBroTubeScreen> {
   }
 
   Widget _buildChannelSection(FengBroTubeChannelResult result) {
+    final collapseIndexLabel = _collapseIndexUpdateLabel(result);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
@@ -253,6 +255,10 @@ class _FengBroTubeScreenState extends State<FengBroTubeScreen> {
                   ),
                 ),
               ),
+              if (collapseIndexLabel != null) ...[
+                const SizedBox(width: 8),
+                _buildCollapseIndexChip(collapseIndexLabel),
+              ],
               TextButton.icon(
                 onPressed: () => _openUrl(result.channel.url),
                 icon: const Icon(Icons.open_in_new_rounded, size: 16),
@@ -274,6 +280,63 @@ class _FengBroTubeScreenState extends State<FengBroTubeScreen> {
           const SizedBox(height: 10),
           ...result.videos.map(_buildVideoTile),
         ],
+      ),
+    );
+  }
+
+  String? _collapseIndexUpdateLabel(FengBroTubeChannelResult result) {
+    if (result.channel.id != 'henren778') {
+      return null;
+    }
+
+    for (final video in result.videos) {
+      final match = RegExp(
+        r'倒台指[數数][^\d０-９]{0,12}([0-9０-９]+(?:\.[0-9０-９]+)?)',
+        caseSensitive: false,
+      ).firstMatch(video.title);
+      if (match != null) {
+        final index = _normalizeDigits(match.group(1) ?? '');
+        if (index.isNotEmpty) {
+          return '倒台指數 $index 更新';
+        }
+      }
+    }
+
+    return null;
+  }
+
+  String _normalizeDigits(String value) {
+    const fullWidthDigits = '０１２３４５６７８９';
+    final buffer = StringBuffer();
+    for (final rune in value.runes) {
+      final character = String.fromCharCode(rune);
+      final digitIndex = fullWidthDigits.indexOf(character);
+      buffer.write(digitIndex >= 0 ? digitIndex.toString() : character);
+    }
+    return buffer.toString();
+  }
+
+  Widget _buildCollapseIndexChip(String label) {
+    return Tooltip(
+      message: '一個狠人標題偵測到倒台指數',
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7ED),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0xFFF97316)),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xFFC2410C),
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
       ),
     );
   }
