@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'feng_bro_tube_screen.dart';
 import 'feng_bro_voice_screen.dart';
 import 'phone_compare_screen.dart';
 import 'price_history_screen.dart';
@@ -33,6 +34,14 @@ class FengBroToolsScreen extends StatelessWidget {
             subtitle:
                 '支援首頁、儀表、訂閱、食品、筆記、常用、圖片、影片、音樂、文件、播客、銀行、例行、設定、關於等 15 個模組，語音草稿需雙重確認。',
             onTap: () => _open(context, const FengBroVoiceScreen()),
+          ),
+          const SizedBox(height: 12),
+          _ToolCard(
+            icon: Icons.ondemand_video_rounded,
+            color: const Color(0xFFDC2626),
+            title: '鋒兄Tube',
+            subtitle: '追蹤指定 YouTube 頻道，每個頻道顯示最新 10 部影片，首頁提示 3 天內新片。',
+            onTap: () => _open(context, const FengBroTubeScreen()),
           ),
           const SizedBox(height: 12),
           _ToolCard(

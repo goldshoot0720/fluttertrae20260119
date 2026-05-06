@@ -8,10 +8,13 @@ import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../data/model/subscription_item.dart';
+import '../data/model/feng_bro_tube_models.dart';
 import '../data/service/appwrite_service.dart';
+import '../data/service/feng_bro_tube_service.dart';
 import 'absurd_marriage_reason_screen.dart';
 import 'battery_screen.dart';
 import 'drunken_shrimp_marriage_reason_screen.dart';
+import 'feng_bro_tube_screen.dart';
 import 'feng_bro_tools_screen.dart';
 import 'oil_price_screen.dart';
 import 'us_debt_screen.dart';
@@ -33,9 +36,12 @@ class _HomeScreenState extends State<HomeScreen>
   static const _codeLineCount = 8169;
 
   final AppwriteService _appwriteService = AppwriteService();
+  final FengBroTubeService _tubeService = FengBroTubeService();
   List<SubscriptionItem> _subscriptions = [];
+  FengBroTubeSummary? _tubeSummary;
   bool _isLoading = true;
   bool _bannerDismissed = false;
+  bool _tubeBannerDismissed = false;
   late final AnimationController _asciiController;
   Timer? _sleepPromptTimer;
   int _sleepPromptCount = 0;
@@ -55,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen>
       _initSystemTray();
     }
     _loadSubscriptions();
+    _loadTubeHighlights();
   }
 
   @override
@@ -121,6 +128,20 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<void> _loadTubeHighlights() async {
+    try {
+      final summary = await _tubeService.fetchLatest();
+      if (!mounted) return;
+      setState(() {
+        _tubeSummary = summary;
+        _tubeBannerDismissed = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _tubeSummary = null);
+    }
+  }
+
   void _showErrorSnackBar(String message) {
     if (!mounted) {
       return;
@@ -166,6 +187,12 @@ class _HomeScreenState extends State<HomeScreen>
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const FengBroToolsScreen()));
+  }
+
+  Future<void> _openFengBroTube() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const FengBroTubeScreen()));
   }
 
   Future<void> _initSleepPromptState() async {
@@ -462,6 +489,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildSummarySection() {
     final expiringItems = _getExpiringItems();
     final sleepWarningStyle = _currentSleepWarningStyle();
+    final tubeRecentVideos = _tubeSummary?.recentVideos() ?? [];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -469,6 +497,10 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           if (sleepWarningStyle != null) ...[
             _buildSleepWarningBanner(sleepWarningStyle),
+            const SizedBox(height: 14),
+          ],
+          if (tubeRecentVideos.isNotEmpty && !_tubeBannerDismissed) ...[
+            _buildTubeNotificationBanner(tubeRecentVideos),
             const SizedBox(height: 14),
           ],
           _buildSleepPromptCard(),
@@ -653,6 +685,78 @@ class _HomeScreenState extends State<HomeScreen>
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                   ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTubeNotificationBanner(List<FengBroTubeVideo> videos) {
+    final channelCount = videos
+        .map((video) => video.channelName)
+        .toSet()
+        .length;
+    final latest = videos.first;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFF59E0B), width: 1.2),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.ondemand_video_rounded,
+            color: Color(0xFFDC2626),
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '鋒兄Tube 有 ${videos.length} 部 3 天內新影片',
+                  style: const TextStyle(
+                    color: Color(0xFF7C2D12),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '$channelCount 個頻道更新，最新：${latest.channelName} - ${latest.title}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF92400E),
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _openFengBroTube,
+                      icon: const Icon(Icons.play_circle_fill_rounded),
+                      label: const Text('查看鋒兄Tube'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          setState(() => _tubeBannerDismissed = true),
+                      icon: const Icon(Icons.close_rounded),
+                      label: const Text('稍後提醒'),
+                    ),
+                  ],
                 ),
               ],
             ),
