@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'feng_bro_voice_screen.dart';
 import 'phone_compare_screen.dart';
 import 'price_history_screen.dart';
 
@@ -26,6 +27,15 @@ class FengBroToolsScreen extends StatelessWidget {
           _buildHero(),
           const SizedBox(height: 16),
           _ToolCard(
+            icon: Icons.mic_rounded,
+            color: const Color(0xFF0F766E),
+            title: '鋒兄語音輸入',
+            subtitle:
+                '支援首頁、儀表、訂閱、食品、筆記、常用、圖片、影片、音樂、文件、播客、銀行、例行、設定、關於等 15 個模組，語音草稿需雙重確認。',
+            onTap: () => _open(context, const FengBroVoiceScreen()),
+          ),
+          const SizedBox(height: 12),
+          _ToolCard(
             icon: Icons.query_stats_rounded,
             color: const Color(0xFFD9702F),
             title: '鋒兄比價',
@@ -35,7 +45,7 @@ class FengBroToolsScreen extends StatelessWidget {
           const SizedBox(height: 12),
           _ToolCard(
             icon: Icons.smartphone_rounded,
-            color: const Color(0xFF0F766E),
+            color: const Color(0xFF2563EB),
             title: '手機比價',
             subtitle: '查詢 Landtop 與 JYES 手機售價，快速比較建議售價、店家價與最低價。',
             onTap: () => _open(context, const PhoneCompareScreen()),
@@ -75,7 +85,7 @@ class FengBroToolsScreen extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            '把常用比價工具集中在這裡，商品歷史價與手機店家價都能直接查。',
+            '把常用比價與語音輸入工具集中在這裡，重要語音指令都先整理成草稿並雙重確認。',
             style: TextStyle(color: Color(0xFFD6FFF4), height: 1.45),
           ),
         ],
