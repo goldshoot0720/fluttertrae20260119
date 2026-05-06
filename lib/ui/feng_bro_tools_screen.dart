@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'feng_bro_finance_screen.dart';
 import 'feng_bro_tube_screen.dart';
 import 'feng_bro_voice_screen.dart';
 import 'phone_compare_screen.dart';
@@ -34,6 +35,15 @@ class FengBroToolsScreen extends StatelessWidget {
             subtitle:
                 '支援首頁、儀表、訂閱、食品、筆記、常用、圖片、影片、音樂、文件、播客、銀行、例行、設定、關於等 15 個模組，語音草稿需雙重確認。',
             onTap: () => _open(context, const FengBroVoiceScreen()),
+          ),
+          const SizedBox(height: 12),
+          _ToolCard(
+            icon: Icons.account_balance_rounded,
+            color: const Color(0xFF2563EB),
+            title: '鋒兄金融',
+            subtitle:
+                '追蹤 CNBC 金融行情：亞股、美股、原油、黃金、30 年美債、VIX、BTC、ETH，創 52 週新高或新低時自動標註。',
+            onTap: () => _open(context, const FengBroFinanceScreen()),
           ),
           const SizedBox(height: 12),
           _ToolCard(
