@@ -881,7 +881,7 @@ const _voiceModules = [
   ),
   _FengVoiceModule(
     id: 'bank',
-    name: '鋒兄銀行',
+    name: '鋒兄銀行 (+電子票證)',
     icon: Icons.account_balance_rounded,
     color: Color(0xFF15803D),
     hint: '例如：新增銀行提醒，信用卡下週一繳款',

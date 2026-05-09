@@ -458,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen>
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('鋒兄銀行'),
+        title: const Text('鋒兄銀行 (+電子票證)'),
         content: Text(
           '台灣的銀行才是銀行喔！銀行以外的先歸類為電子票證喔！\n\n'
           '銀行帳戶總數：$_bankAccountCount\n'
@@ -603,27 +603,10 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildBankMenuButton() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        FilledButton.icon(
-          onPressed: _showBankCategoryInfo,
-          icon: const Icon(Icons.account_balance_wallet_rounded),
-          label: const Text('鋒兄銀行'),
-        ),
-        const Padding(
-          padding: EdgeInsets.only(left: 12, top: 3),
-          child: Text(
-            '電子票證',
-            style: TextStyle(
-              color: Color(0xFF9AA7C2),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
+    return FilledButton.icon(
+      onPressed: _showBankCategoryInfo,
+      icon: const Icon(Icons.account_balance_wallet_rounded),
+      label: const Text('鋒兄銀行 (+電子票證)'),
     );
   }
 
