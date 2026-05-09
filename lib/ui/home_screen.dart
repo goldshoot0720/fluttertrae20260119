@@ -33,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen>
   static const _sleepPromptDateKey = 'sleep_prompt_date';
   static const _sleepPromptCountKey = 'sleep_prompt_count';
   static const _sleepPromptLastAtKey = 'sleep_prompt_last_at';
-  static const _codeLineCount = 8169;
+  static const _codeLineCount = 12231;
 
   final AppwriteService _appwriteService = AppwriteService();
   final FengBroTubeService _tubeService = FengBroTubeService();
@@ -47,6 +47,70 @@ class _HomeScreenState extends State<HomeScreen>
   int _sleepPromptCount = 0;
   DateTime? _lastSleepPromptAt;
   String _sleepPromptMessage = '尚未提示';
+
+  static const List<String> _taiwanBankKeywords = [
+    '臺灣銀行',
+    '台灣銀行',
+    '土地銀行',
+    '土銀',
+    '合作金庫',
+    '合庫',
+    '第一銀行',
+    '一銀',
+    '華南銀行',
+    '華銀',
+    '彰化銀行',
+    '彰銀',
+    '上海商銀',
+    '台北富邦',
+    '富邦銀行',
+    '國泰世華',
+    '高雄銀行',
+    '高銀',
+    '兆豐銀行',
+    '兆豐',
+    '王道銀行',
+    '台中銀行',
+    '京城銀行',
+    '瑞興銀行',
+    '華泰銀行',
+    '新光銀行',
+    '陽信銀行',
+    '板信銀行',
+    '三信銀行',
+    '聯邦銀行',
+    '遠東商銀',
+    '遠銀',
+    '元大銀行',
+    '永豐銀行',
+    '玉山銀行',
+    '凱基銀行',
+    '台新銀行',
+    '安泰銀行',
+    '中國信託',
+    '中信銀行',
+    '將來銀行',
+    '連線銀行',
+    'line bank',
+    '樂天銀行',
+    '星展台灣',
+  ];
+
+  static const List<String> _electronicTicketKeywords = [
+    '電子票證',
+    '悠遊卡',
+    '悠遊付',
+    '一卡通',
+    'icash',
+    '愛金卡',
+    '全支付',
+    '全盈',
+    '街口',
+    '橘子支付',
+    'line pay',
+    'px pay',
+    '歐付寶',
+  ];
 
   @override
   void initState() {
@@ -359,6 +423,58 @@ class _HomeScreenState extends State<HomeScreen>
     return total;
   }
 
+  int get _bankAccountCount {
+    return _subscriptions.where(_isTaiwanBankAccount).length;
+  }
+
+  int get _electronicTicketCount {
+    return _subscriptions.where((item) {
+      final text = _bankClassificationText(item);
+      return _isElectronicTicket(text) && !_isTaiwanBankAccount(item);
+    }).length;
+  }
+
+  bool _isTaiwanBankAccount(SubscriptionItem item) {
+    final text = _bankClassificationText(item).toLowerCase();
+    return _taiwanBankKeywords.any(
+      (keyword) => text.contains(keyword.toLowerCase()),
+    );
+  }
+
+  String _bankClassificationText(SubscriptionItem item) {
+    return '${item.name} ${item.account} ${item.note}'.trim();
+  }
+
+  bool _isElectronicTicket(String value) {
+    final text = value.toLowerCase();
+    return _electronicTicketKeywords.any(
+      (keyword) => text.contains(keyword.toLowerCase()),
+    );
+  }
+
+  Future<void> _showBankCategoryInfo() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('鋒兄銀行'),
+        content: Text(
+          '台灣的銀行才是銀行喔！銀行以外的先歸類為電子票證喔！\n\n'
+          '銀行帳戶總數：$_bankAccountCount\n'
+          '電子票證總數：$_electronicTicketCount',
+          style: const TextStyle(color: Color(0xFFCDD6F4), height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _deleteSubscription(String id) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -486,6 +602,31 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildBankMenuButton() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FilledButton.icon(
+          onPressed: _showBankCategoryInfo,
+          icon: const Icon(Icons.account_balance_wallet_rounded),
+          label: const Text('鋒兄銀行'),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(left: 12, top: 3),
+          child: Text(
+            '電子票證',
+            style: TextStyle(
+              color: Color(0xFF9AA7C2),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSummarySection() {
     final expiringItems = _getExpiringItems();
     final sleepWarningStyle = _currentSleepWarningStyle();
@@ -563,6 +704,29 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _buildStatCard(
+                      icon: Icons.account_balance_rounded,
+                      label: '銀行帳戶總數',
+                      value: '$_bankAccountCount',
+                      color: const Color(0xFF69F0AE),
+                    ),
+                    const SizedBox(width: 12),
+                    _buildStatCard(
+                      icon: Icons.credit_card_rounded,
+                      label: '電子票證總數',
+                      value: '$_electronicTicketCount',
+                      color: const Color(0xFFFFD166),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '台灣的銀行才是銀行喔；銀行以外的先歸類為電子票證。',
+                  style: TextStyle(color: Color(0xFF9AA7C2), fontSize: 12),
+                ),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 10,
@@ -598,6 +762,7 @@ class _HomeScreenState extends State<HomeScreen>
                       icon: const Icon(Icons.account_balance_rounded),
                       label: const Text('US Debt'),
                     ),
+                    _buildBankMenuButton(),
                     OutlinedButton.icon(
                       onPressed: _loadSubscriptions,
                       icon: const Icon(Icons.refresh_rounded),
